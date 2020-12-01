@@ -5,3 +5,5 @@ pub async fn main(){
     assert!(false);
     day1::run().await;
 }
+
+// -*- mode: rust; -*-
