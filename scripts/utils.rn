@@ -1,14 +1,12 @@
 use fs::read_to_string;
 
+
 pub(crate) mod iter {
     pub fn all_pairs(data) {
        let count = data.len();
        for i in 0..count {
-           for j in i..count {
-               if i != j {
-                  yield [data[i], data[j]]
-               }
-
+           for j in (i+ 1)..count {
+                yield [data[i], data[j]]
            }
        }
     }
