@@ -1,0 +1,21 @@
+[package]
+name = "aoc-2020-rune"
+version = "0.1.0"
+authors = ["Tom Solberg <mail@tomolsson.se>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+runestick = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main" }
+rune = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main" }
+rune-modules = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main", features=["full", "experiments"]}
+
+# rune = { path = "../rune/crates/rune", version = "*"}
+# rune-modules = { path = "../rune/crates/rune-modules" }
+# runestick = { path = "../rune/crates/runestick", version = "*"}
+
+anyhow = "1.0.34"
+notify = "4.0.15"
+tokio = {version = "0.2.22", features = ["rt-core", "net", "fs", "macros"]}
+

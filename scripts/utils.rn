@@ -1,0 +1,23 @@
+use fs::read_to_string;
+
+pub(crate) mod iter {
+    pub fn all_pairs(data) {
+       let count = data.len();
+       for i in 0..count {
+           for j in i..count {
+               if i != j {
+                  yield [data[i], data[j]]
+               }
+
+           }
+       }
+    }
+}
+
+pub(crate) async fn read_file(s) {
+    Ok(read_to_string(s)
+        .await?
+        .split('\n')
+        .filter(|v| v != "")
+        .map(|v| std::string::parse_int(v).expect("invalid number")).collect_vec())
+}

@@ -1,0 +1,7 @@
+pub mod utils;
+pub mod day1;
+
+pub async fn main(){
+    assert!(false);
+    day1::run().await;
+}
