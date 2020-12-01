@@ -2,8 +2,8 @@ pub mod utils;
 pub mod day1;
 
 pub async fn main(){
-    assert!(false);
-    day1::run().await;
+    assert!(false); // the code below is only required to make the boostrapper find the functions... this main function should never be called.
+    day1::run;
 }
 
 // -*- mode: rust; -*-

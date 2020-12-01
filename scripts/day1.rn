@@ -1,15 +1,16 @@
-
 use crate::utils::{iter, read_file};
+
 pub async fn run() {
     let items = read_file("input.txt")
                         .await
                         .map(iter::all_pairs)?;
 
     while let Some(i) = items.next() {
-        if i.iter().sum() == Some(2020)
-        {
-                println(`Result: ${i.iter().fold(1, |a, v| a * v)}`);
-                return;
+        if i.iter().sum() == Some(2020) {
+                println(`Day 1: ${i.iter().fold(1, |a, v| a * v)}`);
+                break;
         }
     }
 }
+
+// -*- mode: rust; -*-
