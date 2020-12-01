@@ -12,6 +12,17 @@ pub(crate) mod iter {
            }
        }
     }
+
+    pub fn all_triples(data) {
+       let count = data.len();
+       for i in 0..count {
+           for j in (i + 1)..count {
+               for k in (j+1)..count {
+                  yield [data[i], data[j], data[k]]
+               }
+           }
+       }
+    }
 }
 
 pub(crate) async fn read_file(s) {

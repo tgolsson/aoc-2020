@@ -1,13 +1,24 @@
 use crate::utils::{iter, read_file};
 
 pub async fn run() {
-    let items = read_file("input.txt")
-                        .await
-                        .map(iter::all_pairs)?;
+    let lines = read_file("input.txt")
+                        .await?;
 
+    let items = iter::all_pairs(lines);
     while let Some(i) = items.next() {
         if i.iter().sum() == Some(2020) {
-                println(`Day 1: ${i.iter().fold(1, |a, v| a * v)}`);
+                println(`Day 1.1: ${i.iter().product().unwrap()}`);
+                break;
+        }
+    }
+
+    let lines = read_file("input.txt")
+                        .await?;
+
+    let items = iter::all_triples(lines);
+    while let Some(i) = items.next() {
+        if i.iter().sum() == Some(2020) {
+                println(`Day 1.2: ${i.iter().product().unwrap()}`);
                 break;
         }
     }
