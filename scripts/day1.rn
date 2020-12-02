@@ -1,27 +1,20 @@
 use crate::utils::{iter, read_file};
 
+fn filter_inner(items) {
+    while let Some(i) = items.next() {
+        if i.iter().sum() == Some(2020) {
+            return i.iter().product().unwrap();
+        }
+    }
+}
+
 pub async fn run() {
-    let lines = read_file("input.txt")
-                        .await?;
+    let lines = read_file("inputs/day1.txt")
+        .await?
+        .map(|v| std::string::parse_int(v).expect("invalid number"))
+        .collect_vec();
 
-    let items = iter::all_pairs(lines);
-    while let Some(i) = items.next() {
-        if i.iter().sum() == Some(2020) {
-                println(`Day 1.1: ${i.iter().product().unwrap()}`);
-                break;
-        }
-    }
-
-    let lines = read_file("input.txt")
-                        .await?;
-
-    let items = iter::all_triples(lines);
-    while let Some(i) = items.next() {
-        if i.iter().sum() == Some(2020) {
-                println(`Day 1.2: ${i.iter().product().unwrap()}`);
-                break;
-        }
-    }
+    (filter_inner(iter::all_pairs(lines)), filter_inner(iter::all_triples(lines)))
 }
 
 // -*- mode: rust; -*-

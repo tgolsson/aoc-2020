@@ -5,8 +5,9 @@ use rune::{
     termcolor::{ColorChoice, StandardStream},
     EmitDiagnostics as _, Errors, LoadSourcesError, Options, Sources, Warnings,
 };
-use runestick::{Context, IntoTypeHash, Module, Source, Unit, Vm, VmExecution};
+use runestick::{Context, FromValue, IntoTypeHash, Module, Source, Unit, Vm, VmExecution};
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::{
         mpsc::{channel, Receiver},
@@ -57,7 +58,7 @@ impl ScriptEngineBuilder {
             unit,
             sources: Sources::new(),
             rt,
-            days: vec![],
+            days: Default::default(),
         };
 
         let _ = engine.reload();
@@ -73,7 +74,7 @@ pub struct ScriptEngine {
     main_file: PathBuf,
     sources: Sources,
     rt: runtime::Runtime,
-    days: Vec<u32>,
+    days: HashMap<u32, f64>,
 }
 
 impl ScriptEngine {
@@ -104,7 +105,6 @@ impl ScriptEngine {
             }
         }
 
-        let mut days = vec![];
         for day in 0..24 {
             if self
                 .unit
@@ -113,47 +113,80 @@ impl ScriptEngine {
                 )
                 .is_some()
             {
-                days.push(day)
+                self.days.entry(day).or_default();
             }
         }
 
-        self.days = days;
         Ok(())
     }
 
     pub fn call_all(&mut self) {
-        self.call_days(self.days.clone())
+        self.call_days(self.days.keys().copied().collect())
     }
 
-    pub fn call_days(&mut self, days: Vec<u32>) {
+    pub fn call_days(&mut self, mut days: Vec<u32>) {
+        days.sort();
         for day in days {
             let vm = Vm::new(Arc::new(self.context.runtime()), self.unit.clone());
+            let start = std::time::Instant::now();
             let mut execution: VmExecution = vm
                 .execute(&[&format!("day{}", day), "run"], ())
                 .expect("failed call");
-            if let Err(e) = self.rt.block_on(execution.async_complete()) {
-                let mut writer = StandardStream::stderr(ColorChoice::Always);
-                e.emit_diagnostics(&mut writer, &self.sources)
-                    .expect("failed writing info");
+
+            let result = match self.rt.block_on(execution.async_complete()) {
+                Err(e) => {
+                    let mut writer = StandardStream::stderr(ColorChoice::Always);
+                    e.emit_diagnostics(&mut writer, &self.sources)
+                        .expect("failed writing info");
+
+                    println!("Day {:>2}   FAILED", day);
+                    continue;
+                }
+                Ok(v) => <(u32, u32)>::from_value(v),
+            };
+            let elapsed = start.elapsed();
+
+            let previous_time = self.days[&day];
+            let frac = 1.0 - elapsed.as_secs_f64() / previous_time;
+            if frac.abs() > 0.05 && frac.is_finite() {
+                let sign = if frac > 0.0 { '-' } else { '+' };
+                println!(
+                    "Day {:>2}   {:>1.5}   {}{:2.3}%     {:?}",
+                    day,
+                    elapsed.as_secs_f64(),
+                    sign,
+                    frac,
+                    result,
+                );
+            } else {
+                println!(
+                    "Day {:>2}   {:>1.5}   -----     {:?}",
+                    day,
+                    elapsed.as_secs_f64(),
+                    result,
+                );
             }
+
+            self.days.insert(day, elapsed.as_secs_f64());
         }
     }
 
-    pub fn update(&mut self) -> Vec<String> {
+    pub fn update(&mut self) -> Result<Vec<String>> {
         let updates = self
             .rx
             .try_iter()
             .filter_map(|v| match v {
-                DebouncedEvent::Write(v) => Some(v.to_str().unwrap().to_owned()),
+                DebouncedEvent::Write(v) => {
+                    Some(v.file_name().unwrap().to_str().unwrap().to_owned())
+                }
                 _ => None,
             })
             .collect::<Vec<_>>();
         if updates.len() > 0 {
-            if let Err(_e) = self.reload() {
-                eprintln!("Failed reloading");
-            }
+            self.reload().map(|_| updates)
+        } else {
+            Ok(updates)
         }
-        updates
     }
 }
 
@@ -162,7 +195,13 @@ fn main() -> Result<()> {
 
     engine.call_all();
     loop {
-        let updated_files = engine.update();
+        let updated_files = match engine.update() {
+            Ok(v) => v,
+            Err(_) => {
+                eprintln!("failed reloading, not running");
+                continue;
+            }
+        };
 
         if updated_files.len() == 0 {
             continue;
@@ -171,7 +210,7 @@ fn main() -> Result<()> {
         let days = updated_files
             .iter()
             .filter(|v| v.starts_with("day"))
-            .map(|v| v[3..][2..].parse().expect("x"))
+            .map(|v| v[3..].strip_suffix(".rn").unwrap().parse().expect("x"))
             .collect::<Vec<_>>();
 
         let non_days = updated_files

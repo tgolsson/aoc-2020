@@ -1,0 +1,42 @@
+use crate::utils::{iter, read_file};
+
+struct Constraint {
+    c1,
+    c2,
+    character
+}
+
+fn parse_password(v) {
+    let i = v.split(' ');
+    let counts = i.next().expect("counts");
+    let char = i.next().map(|v| v.char_at(0))???;
+    let password = i.next().expect("the password");
+
+    let c1c2 = counts.split('-');
+    let c1 = std::string::parse_int(c1c2.next()?)?;
+    let c2 = std::string::parse_int(c1c2.next()?)?;
+    (password, Constraint{ c1, c2 , character: char })
+}
+
+fn is_valid1(v) {
+    let (password, Constraint {c1, c2, character}) = v;
+
+    let count_matches = password.chars().fold(0, |a, c| a + if c == character { 1} else { 0 });
+
+    c1 <= count_matches && count_matches <= c2
+}
+
+fn is_valid2(v) {
+    let (password, Constraint {c1, c2, character}) = v;
+    let char1 = password.char_at(c1 - 1);
+    let char2 = password.char_at(c2 - 1);
+
+    (char1 == Ok(Some(character))) != (char2 == Ok(Some(character)))
+}
+
+pub async fn run() {
+    let lines = read_file("inputs/day2.txt").await?.map(parse_password).collect_vec();
+    let matches_1 = lines.iter().filter(is_valid1).count();
+    let matches_2 = lines.iter().filter(is_valid2).count();
+    (matches_1, matches_2)
+}

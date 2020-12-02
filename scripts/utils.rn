@@ -1,12 +1,12 @@
 use fs::read_to_string;
 
-
 pub(crate) mod iter {
     pub fn all_pairs(data) {
        let count = data.len();
        for i in 0..count {
+           let a = data[i];
            for j in (i+ 1)..count {
-                yield [data[i], data[j]]
+                yield [a, data[j]]
            }
        }
     }
@@ -14,9 +14,11 @@ pub(crate) mod iter {
     pub fn all_triples(data) {
        let count = data.len();
        for i in 0..count {
+           let a = data[i];
            for j in (i + 1)..count {
+               let b = data[j];
                for k in (j+1)..count {
-                  yield [data[i], data[j], data[k]]
+                  yield [a, b, data[k]]
                }
            }
        }
@@ -27,8 +29,7 @@ pub(crate) async fn read_file(s) {
     Ok(read_to_string(s)
         .await?
         .split('\n')
-        .filter(|v| v != "")
-        .map(|v| std::string::parse_int(v).expect("invalid number")).collect_vec())
+        .filter(|v| v != ""))
 }
 
 

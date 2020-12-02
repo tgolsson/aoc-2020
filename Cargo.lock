@@ -903,9 +903,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.16.18"
+version = "0.16.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70017ed5c555d79ee3538fc63ca09c70ad8f317dcadc1adc2c496b60c22bb24f"
+checksum = "024a1e66fea74c66c66624ee5622a7ff0e4b73a13b4f5c326ddb50c708944226"
 dependencies = [
  "cc",
  "libc",
@@ -919,7 +919,6 @@ dependencies = [
 [[package]]
 name = "rune"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#d5b725af2fdb298987cb4d97ba67f582a44423c8"
 dependencies = [
  "codespan-reporting",
  "futures-executor",
@@ -937,7 +936,6 @@ dependencies = [
 [[package]]
 name = "rune-macros"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#d5b725af2fdb298987cb4d97ba67f582a44423c8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -947,7 +945,6 @@ dependencies = [
 [[package]]
 name = "rune-modules"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#d5b725af2fdb298987cb4d97ba67f582a44423c8"
 dependencies = [
  "nanorand",
  "reqwest",
@@ -961,7 +958,6 @@ dependencies = [
 [[package]]
 name = "runestick"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#d5b725af2fdb298987cb4d97ba67f582a44423c8"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -982,7 +978,6 @@ dependencies = [
 [[package]]
 name = "runestick-macros"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#d5b725af2fdb298987cb4d97ba67f582a44423c8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1571,9 +1566,9 @@ dependencies = [
 
 [[package]]
 name = "webpki"
-version = "0.21.3"
+version = "0.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab146130f5f790d45f82aeeb09e55a256573373ec64409fc19a6fb82fb1032ae"
+checksum = "b8e38c0608262c46d4a56202ebabdeb094cef7e560ca7a226c6bf055188aa4ea"
 dependencies = [
  "ring",
  "untrusted",

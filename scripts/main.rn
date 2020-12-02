@@ -1,9 +1,11 @@
 pub mod utils;
 pub mod day1;
+pub mod day2;
 
 pub async fn main(){
     assert!(false); // the code below is only required to make the boostrapper find the functions... this main function should never be called.
     day1::run;
+    day2::run;
 }
 
 // -*- mode: rust; -*-
