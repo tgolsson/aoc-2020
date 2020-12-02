@@ -14,8 +14,9 @@ use std::{
         Arc,
     },
     time::Duration,
+    time::Instant,
 };
-
+use structopt::StructOpt;
 use tokio::runtime;
 
 pub struct ScriptEngineBuilder {
@@ -85,6 +86,7 @@ impl ScriptEngine {
         let mut errors = Errors::new();
         let mut options = Options::default();
         options.debug_info(true);
+        options.memoize_instance_fn(true);
         let mut warnings = Warnings::new();
 
         self.sources = sources;
@@ -120,18 +122,26 @@ impl ScriptEngine {
         Ok(())
     }
 
-    pub fn call_all(&mut self) {
+    pub fn call_all(&mut self) -> Result<()> {
         self.call_days(self.days.keys().copied().collect())
     }
 
-    pub fn call_days(&mut self, mut days: Vec<u32>) {
-        days.sort();
+    pub fn call_days(&mut self, mut days: Vec<u32>) -> Result<()> {
+        days.sort_unstable();
         for day in days {
-            let vm = Vm::new(Arc::new(self.context.runtime()), self.unit.clone());
-            let start = std::time::Instant::now();
-            let mut execution: VmExecution = vm
-                .execute(&[&format!("day{}", day), "run"], ())
-                .expect("failed call");
+            self.run_day(day, 10)?;
+        }
+        Ok(())
+    }
+
+    pub fn run_day(&mut self, day: u32, iterations: u32) -> Result<f64> {
+        let start = Instant::now();
+        let func = &[&format!("day{}", day), "run"];
+        let mut idx = 0;
+        let runtime = Arc::new(self.context.runtime());
+        let result = loop {
+            let vm = Vm::new(runtime.clone(), self.unit.clone());
+            let mut execution: VmExecution = vm.execute(func, ()).expect("failed call");
 
             let result = match self.rt.block_on(execution.async_complete()) {
                 Err(e) => {
@@ -140,35 +150,41 @@ impl ScriptEngine {
                         .expect("failed writing info");
 
                     println!("Day {:>2}   FAILED", day);
-                    continue;
+                    return Err(e.into());
                 }
-                Ok(v) => <(u32, u32)>::from_value(v),
+                Ok(v) => v,
             };
-            let elapsed = start.elapsed();
-
-            let previous_time = self.days[&day];
-            let frac = 1.0 - elapsed.as_secs_f64() / previous_time;
-            if frac.abs() > 0.05 && frac.is_finite() {
-                let sign = if frac > 0.0 { '-' } else { '+' };
-                println!(
-                    "Day {:>2}   {:>1.5}   {}{:2.3}%     {:?}",
-                    day,
-                    elapsed.as_secs_f64(),
-                    sign,
-                    frac,
-                    result,
-                );
-            } else {
-                println!(
-                    "Day {:>2}   {:>1.5}   -----     {:?}",
-                    day,
-                    elapsed.as_secs_f64(),
-                    result,
-                );
+            idx += 1;
+            if idx == iterations {
+                break result;
             }
+        };
 
-            self.days.insert(day, elapsed.as_secs_f64());
+        let result = <(u32, u32)>::from_value(result);
+        let elapsed = start.elapsed();
+
+        let previous_time = self.days[&day];
+        let elapsed_ms = (elapsed.as_secs_f64() / iterations as f64) * 1000.0;
+        let frac = 1.0 - elapsed_ms / previous_time;
+        if frac.abs() > 0.05 && frac.is_finite() {
+            let sign = if frac > 0.0 { '-' } else { '+' };
+            println!(
+                "Day {:>2}   {:>1.5}   {}{:2.3}%     {:?}",
+                day,
+                elapsed_ms,
+                sign,
+                frac.abs() * 100.0,
+                result,
+            );
+        } else {
+            println!(
+                "Day {:>2}   {:>1.5}   -------     {:?}",
+                day, elapsed_ms, result,
+            );
         }
+
+        self.days.insert(day, elapsed_ms);
+        Ok(elapsed_ms)
     }
 
     pub fn update(&mut self) -> Result<Vec<String>> {
@@ -182,18 +198,34 @@ impl ScriptEngine {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        if updates.len() > 0 {
+        if !updates.is_empty() {
             self.reload().map(|_| updates)
         } else {
             Ok(updates)
         }
     }
+
+    pub fn days(&self) -> Vec<u32> {
+        self.days.keys().copied().collect()
+    }
 }
 
-fn main() -> Result<()> {
-    let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
+#[derive(StructOpt)]
+struct AOC {
+    #[structopt(subcommand)]
+    cmd: Option<Command>,
+}
 
-    engine.call_all();
+#[derive(StructOpt)]
+enum Command {
+    Bench {
+        #[structopt(short)]
+        iterations: u32,
+    },
+    RunAll,
+}
+
+fn run_reload(mut engine: ScriptEngine) -> Result<()> {
     loop {
         let updated_files = match engine.update() {
             Ok(v) => v,
@@ -203,7 +235,7 @@ fn main() -> Result<()> {
             }
         };
 
-        if updated_files.len() == 0 {
+        if updated_files.is_empty() {
             continue;
         }
 
@@ -218,12 +250,47 @@ fn main() -> Result<()> {
             .filter(|v| !v.starts_with("day"))
             .collect::<Vec<_>>();
 
-        if non_days.len() > 0 {
-            engine.call_all();
+        if !non_days.is_empty() {
+            let _ = engine.call_all();
         } else {
-            engine.call_days(days);
+            let _ = engine.call_days(days);
         }
 
         std::thread::sleep(Duration::from_millis(30));
+    }
+}
+
+fn run(run_once: bool) -> Result<()> {
+    let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
+
+    if run_once {
+        engine.call_all()
+    } else {
+        let _ = engine.call_all();
+        run_reload(engine)
+    }
+}
+
+fn bench(iterations: u32) -> Result<()> {
+    let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
+
+    let mut days = engine.days();
+    days.sort_unstable();
+    for day in days {
+        engine.run_day(day, iterations)?;
+    }
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let args = AOC::from_args();
+
+    if let Some(cmd) = args.cmd {
+        match cmd {
+            Command::Bench { iterations } => bench(iterations),
+            Command::RunAll => run(true),
+        }
+    } else {
+        run(false)
     }
 }

@@ -1,11 +1,12 @@
 use fs::read_to_string;
+use std::iter::range;
 
 pub(crate) mod iter {
     pub fn all_pairs(data) {
        let count = data.len();
        for i in 0..count {
            let a = data[i];
-           for j in (i+ 1)..count {
+           for j in (i+1)..count {
                 yield [a, data[j]]
            }
        }
@@ -25,7 +26,7 @@ pub(crate) mod iter {
     }
 }
 
-pub(crate) async fn read_file(s) {
+pub async fn read_file(s) {
     Ok(read_to_string(s)
         .await?
         .split('\n')

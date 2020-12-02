@@ -14,7 +14,9 @@ pub async fn run() {
         .map(|v| std::string::parse_int(v).expect("invalid number"))
         .collect_vec();
 
+    lines.sort_int();
     (filter_inner(iter::all_pairs(lines)), filter_inner(iter::all_triples(lines)))
+
 }
 
 // -*- mode: rust; -*-

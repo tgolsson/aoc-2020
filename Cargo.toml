@@ -18,4 +18,8 @@ rune-modules = { version = "0.7.0", git="https://github.com/rune-rs/rune", branc
 anyhow = "1.0.34"
 notify = "4.0.15"
 tokio = {version = "0.2.22", features = ["rt-core", "net", "fs", "macros"]}
+structopt = "0.3.21"
+
+[profile.release]
+debug = true
 
