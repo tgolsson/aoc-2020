@@ -21,7 +21,7 @@ fn parse_password(v) {
 fn is_valid1(v) {
     let (password, Constraint {c1, c2, character}) = v;
 
-    let count_matches = password.chars().fold(0, |a, c| a + if c == character { 1} else { 0 });
+    let count_matches = password.chars().fold(0, |a, c| a + if c == character { 1 } else { 0 });
 
     c1 <= count_matches && count_matches <= c2
 }

@@ -221,6 +221,9 @@ enum Command {
     Bench {
         #[structopt(short)]
         iterations: u32,
+
+        #[structopt(short)]
+        day: Option<u32>,
     },
     RunAll,
 }
@@ -271,13 +274,17 @@ fn run(run_once: bool) -> Result<()> {
     }
 }
 
-fn bench(iterations: u32) -> Result<()> {
+fn bench(iterations: u32, day: Option<u32>) -> Result<()> {
     let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
 
-    let mut days = engine.days();
-    days.sort_unstable();
-    for day in days {
+    if let Some(day) = day {
         engine.run_day(day, iterations)?;
+    } else {
+        let mut days = engine.days();
+        days.sort_unstable();
+        for day in days {
+            engine.run_day(day, iterations)?;
+        }
     }
     Ok(())
 }
@@ -287,7 +294,7 @@ fn main() -> Result<()> {
 
     if let Some(cmd) = args.cmd {
         match cmd {
-            Command::Bench { iterations } => bench(iterations),
+            Command::Bench { iterations, day } => bench(iterations, day),
             Command::RunAll => run(true),
         }
     } else {
