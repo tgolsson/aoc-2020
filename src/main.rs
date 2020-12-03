@@ -169,7 +169,7 @@ impl ScriptEngine {
         if frac.abs() > 0.05 && frac.is_finite() {
             let sign = if frac > 0.0 { '-' } else { '+' };
             println!(
-                "Day {:>2}   {:>1.5}   {}{:2.3}%     {:?}",
+                "Day {:>2}   {:>2.5}   {}{:2.3}%     {:?}",
                 day,
                 elapsed_ms,
                 sign,
@@ -178,7 +178,7 @@ impl ScriptEngine {
             );
         } else {
             println!(
-                "Day {:>2}   {:>1.5}   -------     {:?}",
+                "Day {:>2}   {:>2.5}   -------     {:?}",
                 day, elapsed_ms, result,
             );
         }
@@ -278,8 +278,10 @@ fn bench(iterations: u32, day: Option<u32>) -> Result<()> {
     let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
 
     if let Some(day) = day {
+        println!("Benchmarking day {}, iterations={}", day, iterations);
         engine.run_day(day, iterations)?;
     } else {
+        println!("Benchmarking all days, iterations={}", iterations);
         let mut days = engine.days();
         days.sort_unstable();
         for day in days {

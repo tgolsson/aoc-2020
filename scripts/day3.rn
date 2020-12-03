@@ -1,0 +1,61 @@
+use crate::utils::read_file;
+
+struct Coordinate {
+    x, y
+}
+
+struct Map {
+    width, height,
+    grid_world
+}
+
+impl Map {
+    fn new() {
+        return Map {
+            width: 0,
+            height: 0,
+            grid_world: []
+        }
+    }
+
+    fn add(self, row) {
+        self.width = row.len();
+        self.height += 1;
+        self.grid_world.extend(row);
+
+        self
+    }
+
+    fn collide(self, coordinate) {
+        let x = coordinate.x % self.width;
+        let index = x + self.width * coordinate.y;
+        self.grid_world[index]
+    }
+}
+
+fn scan_line(row) {
+    row.chars().map(|v| v == '#').collect_vec()
+}
+
+fn run_slope(map, slope) {
+    (0..(map.height) / slope.1)
+            .iter()
+            .fold(0, |collisions, step| {
+                let coordinate = Coordinate {x: slope.0 * step, y: slope.1 * step};
+                if map.collide(coordinate) {
+                    collisions + 1
+                } else {
+                    collisions
+                }
+    })
+}
+pub async fn run () {
+    let map = read_file("inputs/day3.txt").await?.map(scan_line).fold(Map::new(), |map, row| map.add(row));
+
+    let task1 = run_slope(map, (3, 1));
+    let slopes = [(1, 1), (5, 1), (7, 1), (1, 2)];
+    let r = slopes.iter().map(|slope| run_slope(map, slope)).fold(task1, |acc, colls| acc * colls);
+
+    (task1, r)
+
+}

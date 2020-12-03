@@ -997,7 +997,7 @@ dependencies = [
 [[package]]
 name = "rune"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#888ab519e9ab828e45ea4068033ffd75c68ebdfd"
+source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "codespan-reporting",
  "futures-executor",
@@ -1015,7 +1015,7 @@ dependencies = [
 [[package]]
 name = "rune-macros"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#888ab519e9ab828e45ea4068033ffd75c68ebdfd"
+source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1025,7 +1025,7 @@ dependencies = [
 [[package]]
 name = "rune-modules"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#888ab519e9ab828e45ea4068033ffd75c68ebdfd"
+source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "nanorand",
  "reqwest",
@@ -1039,7 +1039,7 @@ dependencies = [
 [[package]]
 name = "runestick"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#888ab519e9ab828e45ea4068033ffd75c68ebdfd"
+source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1060,7 +1060,7 @@ dependencies = [
 [[package]]
 name = "runestick-macros"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#888ab519e9ab828e45ea4068033ffd75c68ebdfd"
+source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "proc-macro2",
  "quote",
