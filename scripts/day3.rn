@@ -4,6 +4,15 @@ struct Coordinate {
     x, y
 }
 
+impl Coordinate {
+    fn from_step_slope(step, slope) {
+        Coordinate {
+            x: slope.0 * step,
+            y: slope.1 * step
+        }
+    }
+}
+
 struct Map {
     width, height,
     grid_world
@@ -19,10 +28,9 @@ impl Map {
     }
 
     fn add(self, row) {
-        self.width = row.len();
         self.height += 1;
         self.grid_world.extend(row);
-
+        self.width = self.grid_world.len() / self.height;
         self
     }
 
@@ -34,21 +42,17 @@ impl Map {
 }
 
 fn scan_line(row) {
-    row.chars().map(|v| v == '#').collect_vec()
+    row.chars().map(|v| v == '#')
 }
 
 fn run_slope(map, slope) {
     (0..(map.height) / slope.1)
             .iter()
-            .fold(0, |collisions, step| {
-                let coordinate = Coordinate {x: slope.0 * step, y: slope.1 * step};
-                if map.collide(coordinate) {
-                    collisions + 1
-                } else {
-                    collisions
-                }
-    })
+            .map(|step| Coordinate::from_step_slope(step, slope))
+            .filter(|c| map.collide(c))
+            .count()
 }
+
 pub async fn run () {
     let map = read_file("inputs/day3.txt").await?.map(scan_line).fold(Map::new(), |map, row| map.add(row));
 
