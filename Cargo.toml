@@ -7,13 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-runestick = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main" }
-rune = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main" }
-rune-modules = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main", features=["full", "experiments"]}
+# runestick = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main" }
+# rune = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main" }
+# rune-modules = { version = "0.7.0", git="https://github.com/rune-rs/rune", branch="main", features=["full", "experiments"]}
 
-# runestick = { path = "../rune/crates/runestick" }
-# rune = { path = "../rune/crates/rune"}
-# rune-modules = { path = "../rune/crates/rune-modules", features = ["full", "experiments"]}
+runestick = { path = "../rune/crates/runestick" }
+rune = { path = "../rune/crates/rune"}
+rune-modules = { path = "../rune/crates/rune-modules", features = ["full", "experiments"]}
 
 anyhow = "1.0.34"
 notify = "4.0.15"

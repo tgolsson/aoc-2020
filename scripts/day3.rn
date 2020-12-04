@@ -54,7 +54,8 @@ fn run_slope(map, slope) {
 }
 
 pub async fn run () {
-    let map = read_file("inputs/day3.txt").await?.map(scan_line).fold(Map::new(), |map, row| map.add(row));
+    let map = read_file("inputs/day3.txt").await?
+    .filter(|v| v != "").map(scan_line).fold(Map::new(), |map, row| map.add(row));
 
     let task1 = run_slope(map, (3, 1));
     let slopes = [(1, 1), (5, 1), (7, 1), (1, 2)];

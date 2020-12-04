@@ -149,7 +149,7 @@ impl ScriptEngine {
                     e.emit_diagnostics(&mut writer, &self.sources)
                         .expect("failed writing info");
 
-                    println!("Day {:>2}   FAILED", day);
+                    println!("Day {:>2}     FAILED", day);
                     return Err(e.into());
                 }
                 Ok(v) => v,
@@ -169,7 +169,7 @@ impl ScriptEngine {
         if frac.abs() > 0.05 && frac.is_finite() {
             let sign = if frac > 0.0 { '-' } else { '+' };
             println!(
-                "Day {:>2}   {:>2.5}   {}{:2.3}%     {:?}",
+                "Day {:>2}   {: >8.4}   {}{: >6.2}%     {:?}",
                 day,
                 elapsed_ms,
                 sign,
@@ -178,7 +178,7 @@ impl ScriptEngine {
             );
         } else {
             println!(
-                "Day {:>2}   {:>2.5}   -------     {:?}",
+                "Day {:>2}   {: >8.5}   --------     {:?}",
                 day, elapsed_ms, result,
             );
         }

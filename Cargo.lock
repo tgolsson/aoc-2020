@@ -114,9 +114,9 @@ checksum = "0e4cec68f03f32e44924783795810fa50a7035d8c8ebe78580ad7e6c703fba38"
 
 [[package]]
 name = "cc"
-version = "1.0.65"
+version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95752358c8f7552394baf48cd82695b345628ad3f170d607de3ca03b8dacca15"
+checksum = "4c0496836a84f8d0495758516b8621a622beb77c0fed418570e50764093ced48"
 
 [[package]]
 name = "cfg-if"
@@ -278,17 +278,6 @@ name = "futures-core"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "847ce131b72ffb13b6109a221da9ad97a64cbe48feb1028356b836b47b8f1748"
-
-[[package]]
-name = "futures-executor"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4caa2b2b68b880003057c1dd49f1ed937e38f22fcf6c212188a121f08cf40a65"
-dependencies = [
- "futures-core",
- "futures-task",
- "futures-util",
-]
 
 [[package]]
 name = "futures-macro"
@@ -997,10 +986,8 @@ dependencies = [
 [[package]]
 name = "rune"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "codespan-reporting",
- "futures-executor",
  "hashbrown 0.8.2",
  "itoa",
  "log",
@@ -1015,7 +1002,6 @@ dependencies = [
 [[package]]
 name = "rune-macros"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1025,7 +1011,6 @@ dependencies = [
 [[package]]
 name = "rune-modules"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "nanorand",
  "reqwest",
@@ -1039,7 +1024,6 @@ dependencies = [
 [[package]]
 name = "runestick"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1060,7 +1044,6 @@ dependencies = [
 [[package]]
 name = "runestick-macros"
 version = "0.7.0"
-source = "git+https://github.com/rune-rs/rune?branch=main#891f1cb27f50dc59b53ee2202d58af16b322704d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1157,9 +1140,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.59"
+version = "1.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcac07dbffa1c65e7f816ab9eba78eb142c6d44410f4eeba1e26e4f5dfa56b95"
+checksum = "1500e84d27fe482ed1dc791a56eddc2f230046a040fa908c08bda1d9fb615779"
 dependencies = [
  "itoa",
  "ryu",

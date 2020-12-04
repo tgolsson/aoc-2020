@@ -35,7 +35,7 @@ fn is_valid2(v) {
 }
 
 pub async fn run() {
-    let lines = read_file("inputs/day2.txt").await?.map(parse_password).collect_vec();
+    let lines = read_file("inputs/day2.txt").await?.filter(|v| v != "").map(parse_password).collect_vec();
     let matches_1 = lines.iter().filter(is_valid1).count();
     let matches_2 = lines.iter().filter(is_valid2).count();
     (matches_1, matches_2)

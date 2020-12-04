@@ -24,13 +24,20 @@ pub(crate) mod iter {
            }
        }
     }
+
+    pub fn batching(it, func) {
+        (|| {
+            while let Some(v) = func(it) {
+                yield v
+            }
+        })().iter()
+    }
 }
 
 pub async fn read_file(s) {
     Ok(read_to_string(s)
         .await?
-        .split('\n')
-        .filter(|v| v != ""))
+        .split('\n'))
 }
 
 

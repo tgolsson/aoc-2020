@@ -1,0 +1,233 @@
+use crate::utils::{read_file, iter};
+use std::collections::HashMap;
+
+pub fn parse_field(field) {
+    let parts = field.split(':');
+
+    Some((parts.next()?, parts.next()?))
+}
+
+struct Passport {
+    byr,
+    iyr,
+    eyr,
+    hgt,
+    hcl,
+    ecl,
+    pid,
+    cid,
+}
+
+fn check_field_range(field, min, max) {
+    let fv = std::string::parse_int(field)?;
+    let is_ok = min <= fv && fv <= max;
+    Some(is_ok)
+}
+
+impl Passport {
+    fn empty() {
+        Self {
+            byr: None,
+            iyr: None,
+            eyr: None,
+            hgt: None,
+            hcl: None,
+            ecl: None,
+            pid: None,
+            cid: None,
+        }
+    }
+
+    fn has_required_fields(self) {
+        self.byr.is_some() &&
+        self.iyr.is_some() &&
+        self.eyr.is_some() &&
+        self.hgt.is_some() &&
+        self.hcl.is_some() &&
+        self.ecl.is_some() &&
+        self.pid.is_some()
+    }
+
+    fn validate(self) {
+        if !self.has_required_fields() {
+            return false;
+        }
+
+        let byr = self.byr.map(|v| v.clone())?;
+        if !check_field_range(byr, 1920, 2002).unwrap_or(false) {
+            return false;
+        }
+
+        let iyr = self.iyr.map(|v| v.clone())?;
+        if !check_field_range(iyr, 2010, 2020).unwrap_or(false) {
+            return false;
+        }
+
+        let eyr = self.eyr.map(|v| v.clone())?;
+        if !check_field_range(eyr, 2020, 2030).unwrap_or(false) {
+            return false;
+        }
+
+        let hgt = self.hgt.map(|v| v.clone())?;
+        if hgt.ends_with("in") {
+            let hgt = hgt.split_str("in").next()?;
+            if !check_field_range(hgt, 59, 76)? {
+                return false;
+            }
+        } else if hgt.ends_with("cm") {
+            let hgt = hgt.split_str("cm").next()?;
+            if !check_field_range(hgt, 150, 193)? {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        let hcl1 = self.hcl?;
+        let hcl = hcl1.clone().chars();
+        if (hcl.next()? != '#') {
+            return false;
+        }
+
+        let valid_chars = std::collections::HashSet::new();
+        valid_chars.insert('0');
+        valid_chars.insert('1');
+        valid_chars.insert('2');
+        valid_chars.insert('3');
+        valid_chars.insert('4');
+        valid_chars.insert('5');
+        valid_chars.insert('6');
+        valid_chars.insert('7');
+        valid_chars.insert('8');
+        valid_chars.insert('9');
+        valid_chars.insert('a');
+        valid_chars.insert('b');
+        valid_chars.insert('c');
+        valid_chars.insert('d');
+        valid_chars.insert('e');
+        valid_chars.insert('f');
+        if !hcl.fold(true, |acc, c| {
+            let v = valid_chars.contains(c);
+            acc & v
+        }) {
+            return false;
+        }
+
+        let ecl = self.ecl.map(|v| v.clone())?;
+        match ecl {
+            "amb" => true,
+            "blu" => true,
+            "brn" => true,
+            "gry" => true,
+            "grn" => true,
+            "hzl" => true,
+            "oth" => true,
+            v => { return false;},
+        }
+
+        let pid = self.pid.map(|v|v.clone())?;
+        if pid.len() != 9 || std::string::parse_int(pid).is_err() {
+            return false;
+        }
+
+        true
+    }
+
+}
+
+fn parse_passport(lines) {
+    let passport = Passport::empty();
+    for line in lines {
+        for field_data in line.split(' ') {
+            if let Some((field_name, field_value)) = parse_field(field_data) {
+                match field_name {
+                    "byr" => passport.byr = Some(field_value),
+                    "iyr" => passport.iyr = Some(field_value),
+                    "eyr" => passport.eyr = Some(field_value),
+                    "hgt" => passport.hgt = Some(field_value),
+                    "hcl" => passport.hcl = Some(field_value),
+                    "ecl" => passport.ecl = Some(field_value),
+                    "pid" => passport.pid = Some(field_value),
+                    "cid" => passport.cid = Some(field_value),
+                }
+            }
+        }
+    }
+    passport
+}
+
+pub fn parse_all(it) {
+    let it = iter::batching(it, |it| {
+        let v = [];
+        loop {
+            match it.next() {
+                None => { return  if v.len() != 0 { Some(v) } else { None }; },
+                Some(x) => { if x == "" {  return Some(v); } else { v.push(x); } }
+            }
+        }
+    });
+
+    let passports = it.map(parse_passport).collect_vec();
+    passports
+}
+
+pub fn tests() {
+    let make_valid =|| {
+        parse_passport(["pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980",
+                        "hcl:#623a2f",
+                        ""
+                        ].iter())
+    };
+
+    let p = make_valid();
+    p.pid = None;
+    assert!(!p.has_required_fields());
+    assert!(!p.validate());
+
+    let p = make_valid();
+    p.hgt = None;
+    assert!(!p.has_required_fields());
+    assert!(!p.validate());
+
+    let p = make_valid();
+    p.ecl = None;
+    assert!(!p.has_required_fields());
+    assert!(!p.validate());
+
+    let p2 = make_valid();
+    p2.iyr = None;
+    assert!(!p2.has_required_fields());
+    assert!(!p2.validate());
+
+    let p3 = make_valid();
+    p3.eyr = None;
+    assert!(!p3.has_required_fields());
+    assert!(!p3.validate());
+    let p1 = make_valid();
+    p1.byr = None;
+    assert!(!p1.has_required_fields());
+    assert!(!p1.validate());
+
+
+    let p = make_valid();
+    p.hcl = None;
+    assert!(!p.has_required_fields());
+    assert!(!p.validate(), "{:?}", p);
+
+    let p = make_valid();
+    p.cid = None;
+    assert!(p.has_required_fields());
+    assert!(p.validate(), "{:?}", p);
+
+}
+
+pub async fn run() {
+    // tests();
+    let items = read_file("inputs/day4.txt").await?;
+    let passports = parse_all(items);
+
+    let valid_count = passports.iter().filter(Passport::has_required_fields).count();
+    let filtered_count = passports.iter().filter(Passport::validate).count();
+
+    (valid_count, filtered_count)
+}

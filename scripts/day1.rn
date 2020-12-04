@@ -2,8 +2,8 @@ use crate::utils::{iter, read_file};
 
 fn filter_inner(items) {
     while let Some(i) = items.next() {
-        if i.iter().sum() == Some(2020) {
-            return i.iter().product().unwrap();
+        if i.iter().sum() == 2020 {
+            return i.iter().product();
         }
     }
 }
@@ -11,6 +11,7 @@ fn filter_inner(items) {
 pub async fn run() {
     let lines = read_file("inputs/day1.txt")
         .await?
+        .filter(|v| v != "")
         .map(|v| std::string::parse_int(v).expect("invalid number"))
         .collect_vec();
 
