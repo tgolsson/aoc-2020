@@ -53,22 +53,19 @@ impl Passport {
             return false;
         }
 
-        let byr = self.byr.map(|v| v.clone())?;
-        if !check_field_range(byr, 1920, 2002).unwrap_or(false) {
+        if !check_field_range(self.byr.as_ref()?, 1920, 2002).unwrap_or(false) {
             return false;
         }
 
-        let iyr = self.iyr.map(|v| v.clone())?;
-        if !check_field_range(iyr, 2010, 2020).unwrap_or(false) {
+        if !check_field_range(self.iyr.as_ref()?, 2010, 2020).unwrap_or(false) {
             return false;
         }
 
-        let eyr = self.eyr.map(|v| v.clone())?;
-        if !check_field_range(eyr, 2020, 2030).unwrap_or(false) {
+        if !check_field_range(self.eyr.as_ref()?, 2020, 2030).unwrap_or(false) {
             return false;
         }
 
-        let hgt = self.hgt.map(|v| v.clone())?;
+        let hgt = self.hgt.as_ref()?;
         if hgt.ends_with("in") {
             let hgt = hgt.split_str("in").next()?;
             if !check_field_range(hgt, 59, 76)? {
@@ -83,8 +80,7 @@ impl Passport {
             return false;
         }
 
-        let hcl1 = self.hcl?;
-        let hcl = hcl1.clone().chars();
+        let hcl = self.hcl.as_ref()?.chars();
         if (hcl.next()? != '#') {
             return false;
         }
@@ -113,8 +109,7 @@ impl Passport {
             return false;
         }
 
-        let ecl = self.ecl.map(|v| v.clone())?;
-        match ecl {
+        match self.ecl.as_ref()? {
             "amb" => true,
             "blu" => true,
             "brn" => true,
@@ -125,14 +120,13 @@ impl Passport {
             v => { return false;},
         }
 
-        let pid = self.pid.map(|v|v.clone())?;
+        let pid = self.pid.as_ref()?;
         if pid.len() != 9 || std::string::parse_int(pid).is_err() {
             return false;
         }
 
         true
     }
-
 }
 
 fn parse_passport(lines) {

@@ -1,0 +1,102 @@
+use crate::utils::read_file;
+
+fn step((mmr, mmc), l) {
+    match l {
+        'B' => {
+            let fix = if (mmr.1 - mmr.0) % 2 == 0 {
+                0
+            } else {
+                1
+            };
+            let mmr = (mmr.0 + (mmr.1 - mmr.0) / 2 + fix, mmr.1);
+            (mmr, mmc)
+        },
+        'F' => {
+            let fix = if (mmr.1 - mmr.0) % 2 == 0 {
+                0
+            } else {
+                1
+            };
+            let mmr = (mmr.0, mmr.1 - (mmr.1 - mmr.0) / 2 - fix);
+            (mmr, mmc)
+        },
+        'L' => {
+            let fix = if (mmc.1 - mmc.0) % 2 == 0 {
+                0
+            } else {
+                1
+            };
+            let mmc = (mmc.0, mmc.1 - (mmc.1 - mmc.0) / 2 - fix);
+            (mmr, mmc)
+        },
+        'R' => {
+            let fix = if (mmc.1 - mmc.0) % 2 == 0 {
+                0
+            } else {
+                1
+            };
+            let mmc = (mmc.0 + (mmc.1 - mmc.0) / 2 + fix, mmc.1);
+            (mmr, mmc)
+        }
+    }
+}
+
+pub fn to_index((row, col)) {
+    row * 8 + col
+}
+
+pub fn to_row_col(value) {
+    Some(value
+            .chars()
+            .fold(((0, 127), (0, 7)), step))
+            .map(|(mmr, mmc)| (mmr.0, mmc.0))?
+}
+
+pub fn tests() {
+    let test_cases = #{
+        "BFFFBBFRRR": (70, 7),
+        "FFFBBBFRRR": (14, 7),
+        "BBFFBBFRLL": (102, 4),
+        "FBFBBFFRLR": (44, 5),
+        "LLL": (0, 0),
+        "LLR": (0, 1),
+        "LRL": (0, 2),
+        "LRR": (0, 3),
+        "RLL": (0, 4),
+        "RLR": (0, 5),
+        "RRL": (0, 6),
+        "RRR": (0, 7),
+    };
+
+    for (case, expectation) in test_cases.iter() {
+        let computed = to_row_col(case);
+        assert_eq!(expectation, computed, "case: {}", case);
+    }
+}
+
+fn max(a, b) {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+pub async fn run() {
+    let map = read_file("inputs/day5.txt")
+        .await?
+        .map(to_row_col)
+        .map(to_index)
+        .collect_vec();
+
+    map.sort_int();
+
+    let expected = map[0];
+    let found = map
+        .iter()
+        .enumerate()
+        .find(|(idx, v)| idx + expected != v)
+        .map(|v| v.0 + expected)?;
+
+    (map[map.len() - 1], found)
+}
