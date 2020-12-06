@@ -18,54 +18,23 @@ struct Passport {
     cid,
 }
 
-fn check_field_range(field, min, max) {
-    let fv = std::string::parse_int(field)?;
-    let is_ok = min <= fv && fv <= max;
-    Some(is_ok)
-}
-
 impl Passport {
-    fn empty() {
-        Self {
-            byr: None,
-            iyr: None,
-            eyr: None,
-            hgt: None,
-            hcl: None,
-            ecl: None,
-            pid: None,
-            cid: None,
-        }
-    }
-
-    fn has_required_fields(self) {
-        self.byr.is_some() &&
-        self.iyr.is_some() &&
-        self.eyr.is_some() &&
-        self.hgt.is_some() &&
-        self.hcl.is_some() &&
-        self.ecl.is_some() &&
-        self.pid.is_some()
-    }
 
     fn validate(self) {
-        if !self.has_required_fields() {
+        if !check_field_range(self.byr, 1920, 2002).unwrap_or(false) {
             return false;
         }
 
-        if !check_field_range(self.byr.as_ref()?, 1920, 2002).unwrap_or(false) {
+
+        if !check_field_range(self.iyr, 2010, 2020).unwrap_or(false) {
             return false;
         }
 
-        if !check_field_range(self.iyr.as_ref()?, 2010, 2020).unwrap_or(false) {
+        if !check_field_range(self.eyr, 2020, 2030).unwrap_or(false) {
             return false;
         }
 
-        if !check_field_range(self.eyr.as_ref()?, 2020, 2030).unwrap_or(false) {
-            return false;
-        }
-
-        let hgt = self.hgt.as_ref()?;
+        let hgt = self.hgt;
         if hgt.ends_with("in") {
             let hgt = hgt.split_str("in").next()?;
             if !check_field_range(hgt, 59, 76)? {
@@ -80,7 +49,7 @@ impl Passport {
             return false;
         }
 
-        let hcl = self.hcl.as_ref()?.chars();
+        let hcl = self.hcl.chars();
         if (hcl.next()? != '#') {
             return false;
         }
@@ -109,7 +78,7 @@ impl Passport {
             return false;
         }
 
-        match self.ecl.as_ref()? {
+        match self.ecl {
             "amb" => true,
             "blu" => true,
             "brn" => true,
@@ -120,7 +89,7 @@ impl Passport {
             v => { return false;},
         }
 
-        let pid = self.pid.as_ref()?;
+        let pid = self.pid;
         if pid.len() != 9 || std::string::parse_int(pid).is_err() {
             return false;
         }
@@ -128,9 +97,63 @@ impl Passport {
         true
     }
 }
+struct PassportData {
+    byr,
+    iyr,
+    eyr,
+    hgt,
+    hcl,
+    ecl,
+    pid,
+    cid,
+}
+
+fn check_field_range(field, min, max) {
+    let fv = std::string::parse_int(field)?;
+    let is_ok = min <= fv && fv <= max;
+    Some(is_ok)
+}
+
+impl PassportData {
+    fn empty() {
+        Self {
+            byr: None,
+            iyr: None,
+            eyr: None,
+            hgt: None,
+            hcl: None,
+            ecl: None,
+            pid: None,
+            cid: None,
+        }
+    }
+
+    fn complete(self) {
+        let byr = self.byr?;
+        let iyr = self.iyr?;
+        let eyr = self.eyr?;
+        let hgt = self.hgt?;
+        let hcl = self.hcl?;
+        let ecl = self.ecl?;
+        let pid = self.pid?;
+        Some(
+            Passport {
+                byr: byr,
+                iyr: iyr,
+                eyr: eyr,
+                hgt: hgt,
+                hcl: hcl,
+                ecl: ecl,
+                pid: pid,
+                cid: self.cid,
+            }
+        )
+    }
+
+}
 
 fn parse_passport(lines) {
-    let passport = Passport::empty();
+    let passport = PassportData::empty();
     for line in lines {
         for field_data in line.split(' ') {
             if let Some((field_name, field_value)) = parse_field(field_data) {
@@ -147,7 +170,7 @@ fn parse_passport(lines) {
             }
         }
     }
-    passport
+    passport.complete()
 }
 
 pub fn parse_all(it) {
@@ -161,8 +184,8 @@ pub fn parse_all(it) {
         }
     });
 
-    let passports = it.map(parse_passport).collect_vec();
-    passports
+    let PassportDatas = it.map(parse_passport).filter(|v| v.is_some()).map(Option::unwrap);
+    PassportDatas
 }
 
 pub fn tests() {
@@ -175,42 +198,42 @@ pub fn tests() {
 
     let p = make_valid();
     p.pid = None;
-    assert!(!p.has_required_fields());
+    assert!(!p.is_some());
     assert!(!p.validate());
 
     let p = make_valid();
     p.hgt = None;
-    assert!(!p.has_required_fields());
+    assert!(!p.is_some());
     assert!(!p.validate());
 
     let p = make_valid();
     p.ecl = None;
-    assert!(!p.has_required_fields());
+    assert!(!p.is_some());
     assert!(!p.validate());
 
     let p2 = make_valid();
     p2.iyr = None;
-    assert!(!p2.has_required_fields());
+    assert!(!p2.is_some());
     assert!(!p2.validate());
 
     let p3 = make_valid();
     p3.eyr = None;
-    assert!(!p3.has_required_fields());
+    assert!(!p3.is_some());
     assert!(!p3.validate());
     let p1 = make_valid();
     p1.byr = None;
-    assert!(!p1.has_required_fields());
+    assert!(!p1.is_some());
     assert!(!p1.validate());
 
 
     let p = make_valid();
     p.hcl = None;
-    assert!(!p.has_required_fields());
+    assert!(!p.is_some());
     assert!(!p.validate(), "{:?}", p);
 
     let p = make_valid();
     p.cid = None;
-    assert!(p.has_required_fields());
+    assert!(p.is_some());
     assert!(p.validate(), "{:?}", p);
 
 }
@@ -220,8 +243,8 @@ pub async fn run() {
     let items = read_file("inputs/day4.txt").await?;
     let passports = parse_all(items);
 
-    let valid_count = passports.iter().filter(Passport::has_required_fields).count();
-    let filtered_count = passports.iter().filter(Passport::validate).count();
+    let valid = passports.collect_vec();
+    let filtered_count = valid.iter().filter(Passport::validate).count();
 
-    (valid_count, filtered_count)
+    (valid.len(), filtered_count)
 }

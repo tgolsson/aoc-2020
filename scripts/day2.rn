@@ -6,7 +6,7 @@ struct Constraint {
     character
 }
 
-fn parse_password(v) {
+pub fn parse_password(v) {
     let i = v.split(' ');
     let counts = i.next().expect("counts");
     let char = i.next().map(|v| v.char_at(0))???;
@@ -18,7 +18,7 @@ fn parse_password(v) {
     (password, Constraint{ c1, c2 , character: char })
 }
 
-fn is_valid1(v) {
+pub fn is_valid1(v) {
     let (password, Constraint {c1, c2, character}) = v;
 
     let count_matches = password.chars().fold(0, |a, c| a + if c == character { 1 } else { 0 });
@@ -26,7 +26,7 @@ fn is_valid1(v) {
     c1 <= count_matches && count_matches <= c2
 }
 
-fn is_valid2(v) {
+pub fn is_valid2(v) {
     let (password, Constraint {c1, c2, character}) = v;
     let char1 = password.char_at(c1 - 1);
     let char2 = password.char_at(c2 - 1);

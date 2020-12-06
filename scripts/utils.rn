@@ -32,6 +32,18 @@ pub(crate) mod iter {
             }
         })().iter()
     }
+
+    pub fn batch_by_lines(it) {
+        batching(it, |it| {
+            let v = [];
+            loop {
+                match it.next() {
+                    None => { return  if v.len() != 0 { Some(v) } else { None }; },
+                    Some(x) => { if x == "" {  return Some(v); } else { v.push(x); } }
+                }
+            }
+        })
+    }
 }
 
 pub async fn read_file(s) {
@@ -39,6 +51,4 @@ pub async fn read_file(s) {
         .await?
         .split('\n'))
 }
-
-
 // -*- mode: rust; -*-

@@ -1,0 +1,45 @@
+use crate::utils::{iter, read_file};
+use std::{string::String, collections::HashSet};
+
+fn apply(f) {
+    return (|a, v| {
+        return (match a {
+            Some(a) => Some(f(a, v)),
+            None => Some(v),
+        });
+    });
+}
+
+fn map(inner, outer) {
+    |a, v| {
+        outer(inner(a, v))
+    }
+}
+
+
+pub fn count_group(v) {
+    |lines| {
+        lines
+            .iter()
+            .map(String::chars)
+            .map(HashSet::from)
+            .fold(None, apply(v))?
+            .len()
+    }
+}
+
+pub async fn run() {
+    let items = read_file("inputs/day6.txt")
+        .await?
+        .collect_vec();
+
+    let any_yes =  iter::batch_by_lines(items.iter())
+        .map(count_group(map(HashSet::union, HashSet::from)))
+        .sum();
+
+    let all_yes = iter::batch_by_lines(items.iter())
+        .map(count_group(map(HashSet::intersection, HashSet::from)))
+        .sum();
+
+    (any_yes, all_yes)
+}

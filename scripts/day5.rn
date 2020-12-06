@@ -74,14 +74,6 @@ pub fn tests() {
     }
 }
 
-fn max(a, b) {
-    if a > b {
-        a
-    } else {
-        b
-    }
-}
-
 pub async fn run() {
     let map = read_file("inputs/day5.txt")
         .await?
@@ -95,7 +87,7 @@ pub async fn run() {
     let found = map
         .iter()
         .enumerate()
-        .find(|(idx, v)| idx + expected != v)
+        .find(|(idx, v)| idx + expected != v )
         .map(|v| v.0 + expected)?;
 
     (map[map.len() - 1], found)
