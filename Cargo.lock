@@ -979,6 +979,7 @@ dependencies = [
 [[package]]
 name = "rune"
 version = "0.7.0"
+source = "git+https://github.com/rune-rs/rune?branch=main#c55fe69f094e5aaf6a49b207bf53400af976ab7d"
 dependencies = [
  "codespan-reporting",
  "hashbrown",
@@ -995,6 +996,7 @@ dependencies = [
 [[package]]
 name = "rune-macros"
 version = "0.7.0"
+source = "git+https://github.com/rune-rs/rune?branch=main#c55fe69f094e5aaf6a49b207bf53400af976ab7d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1004,6 +1006,7 @@ dependencies = [
 [[package]]
 name = "rune-modules"
 version = "0.7.0"
+source = "git+https://github.com/rune-rs/rune?branch=main#c55fe69f094e5aaf6a49b207bf53400af976ab7d"
 dependencies = [
  "nanorand",
  "reqwest",
@@ -1017,6 +1020,7 @@ dependencies = [
 [[package]]
 name = "runestick"
 version = "0.7.0"
+source = "git+https://github.com/rune-rs/rune?branch=main#c55fe69f094e5aaf6a49b207bf53400af976ab7d"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1037,6 +1041,7 @@ dependencies = [
 [[package]]
 name = "runestick-macros"
 version = "0.7.0"
+source = "git+https://github.com/rune-rs/rune?branch=main#c55fe69f094e5aaf6a49b207bf53400af976ab7d"
 dependencies = [
  "proc-macro2",
  "quote",

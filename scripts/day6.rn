@@ -16,7 +16,6 @@ fn map(inner, outer) {
     }
 }
 
-
 pub fn count_group(v) {
     |lines| {
         lines

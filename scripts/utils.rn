@@ -44,6 +44,28 @@ pub(crate) mod iter {
             }
         })
     }
+
+    pub fn chunks(it, n) {
+        batching(it, |seq| {
+            let v = [];
+            loop {
+                match seq.next() {
+                    None => { return if v.len() == n { Some(v) } else { None }; },
+                    Some(x) => {  v.push(x); }
+                }
+
+                if v.len() == n {
+                    return Some(v);
+                }
+            }
+        })
+    }
+}
+
+pub mod functional {
+    pub fn capply1_1(fun, arg) {
+        |v| fun(v, arg)
+    }
 }
 
 pub async fn read_file(s) {
@@ -51,4 +73,6 @@ pub async fn read_file(s) {
         .await?
         .split('\n'))
 }
+
+
 // -*- mode: rust; -*-

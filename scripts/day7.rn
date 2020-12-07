@@ -1,0 +1,66 @@
+use crate::utils::{read_file, iter::chunks, functional::capply1_1};
+use std::collections::{HashMap, HashSet};
+
+fn parse_rule(line) {
+    let (adj, color) = (line.next()?, line.next()?);
+
+    let line = line.skip(2); // bags contain
+
+    let v = HashMap::from(chunks(line, 4).map(|[num, adj, color, BAG]| {
+        (`${adj}-${color}`, std::string::parse_int(num).unwrap())
+    }));
+
+    (`${adj}-${color}`, v)
+}
+
+fn invert_graph(graph) {
+    let pre_computed_bags = HashMap::from(graph.keys().map(|v| (v, HashSet::new())));
+    graph
+        .iter()
+        .flat_map(
+            |(bag, contains)| {
+                contains
+                    .keys()
+                    .map(|contained| (bag, contained))
+            })
+        .fold(pre_computed_bags, |a, (bag, contained)| {
+            a.get(contained)?.insert(bag);
+            a
+        })
+}
+
+fn find_all_paths_to(graph, color) {
+    graph.get(color).map(|containees| {
+        HashSet::from(
+            containees.union(
+                HashSet::from(
+                    containees
+                        .iter()
+                        .flat_map(|color| find_all_paths_to(graph, color))
+                )
+            )
+        )
+    }).unwrap_or(HashSet::new)
+}
+
+fn accumulate_bags(graph, color) {
+    graph
+        .get(color)?
+        .iter()
+        .map(|(col, count)| accumulate_bags(graph, col)  * count + count)
+        .fold(0, int::wrapping_add)
+}
+
+pub async fn run() {
+    let split_space = capply1_1(String::split, ' ');
+    let graph = HashMap::from(
+        read_file("inputs/day7.txt")
+            .await?
+            .map(split_space)
+            .map(parse_rule)
+    );
+
+    let v = find_all_paths_to(invert_graph(graph), "shiny-gold").len();
+    let w = accumulate_bags(graph, "shiny-gold");
+    (v, w)
+}
