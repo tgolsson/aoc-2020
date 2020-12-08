@@ -1,0 +1,102 @@
+use crate::utils::read_file;
+use std::collections::HashSet;
+
+enum Inst {
+    Nop(step),
+    Acc(step),
+    Jmp(step),
+}
+
+fn instruction(line) {
+    let parts = line.split(' ');
+
+    let inst = parts.next()?;
+    let step = parts.next()?;
+
+    let step = std::string::parse_int(step).unwrap();
+    match inst {
+        "nop" => Inst::Nop(step),
+        "acc" => Inst::Acc(step),
+        "jmp" => Inst::Jmp(step),
+    }
+}
+
+fn eval(program) {
+    let accumulator = 0;
+    let ip = 0;
+
+    let visited_ips = HashSet::new();
+    loop {
+        if visited_ips.contains(ip) {
+            return Err(accumulator);
+        }
+
+        visited_ips.insert(ip);
+
+        ip = match program[ip] {
+            Inst::Nop(step) => ip + 1,
+            Inst::Acc(step) => { accumulator += step; ip + 1 },
+            Inst::Jmp(step) => ip + step,
+        };
+
+        if ip == program.len() {
+            return Ok(accumulator);
+        }
+    }
+}
+
+// greedily try replace any function
+fn try_replace(program) {
+    for idx in 0..program.len() {
+        let original_value = program[idx];
+        program[idx] = match original_value {
+            Inst::Nop(step) => Inst::Jmp(step),
+            Inst::Acc(step) => continue,
+            Inst::Jmp(step) => Inst::Nop(step),
+        };
+
+        match eval(program) {
+            Err(_) => program[idx] = original_value,
+            Ok(v) => return Ok(v),
+        }
+    }
+}
+
+//#[cfg(test)]
+async fn test_part1() {
+    let inputs = read_file("inputs/day8_test.txt")
+        .await?
+        .map(instruction)
+        .collect_vec();
+
+    assert_eq!(eval(inputs), Err(5));
+}
+
+
+//#[cfg(test)]
+async fn test_part2() {
+    let inputs = read_file("inputs/day8_test.txt")
+        .await?
+        .map(instruction)
+        .collect_vec();
+
+    assert_eq!(try_replace(inputs), Ok(8));
+}
+
+pub async fn run() {
+    test_part1().await;
+    test_part2().await;
+
+    let inputs = read_file("inputs/day8.txt")
+        .await?
+        .map(instruction)
+        .collect_vec();
+
+    let Err(a) = eval(inputs);
+    let b = try_replace(inputs)?;
+
+    assert_eq!(a, 1384, "wrong result!");
+    assert_eq!(b, 761, "wrong result!");
+
+    (a, b)
+}
