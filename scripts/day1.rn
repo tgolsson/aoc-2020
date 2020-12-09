@@ -8,7 +8,43 @@ fn filter_inner(items) {
     }
 }
 
+#[test]
+fn test_part1()
+{
+    let lines = [
+        1721,
+        979,
+        366,
+        299,
+        675,
+        1456
+    ];
+
+    lines.sort_int();
+    assert_eq!(filter_inner(iter::all_pairs(lines)), 514579);
+}
+
+#[test]
+fn test_part2()
+{
+    let lines = [
+        1721,
+        979,
+        366,
+        299,
+        675,
+        1456
+    ];
+
+    lines.sort_int();
+    assert_eq!(filter_inner(iter::all_triples(lines)), 241861950);
+}
+
+
 pub async fn run() {
+    test_part1;
+    test_part2;
+
     let lines = read_file("inputs/day1.txt")
         .await?
         .filter(|v| v != "")

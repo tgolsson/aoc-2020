@@ -5,7 +5,10 @@ use rune::{
     termcolor::{ColorChoice, StandardStream},
     EmitDiagnostics as _, Errors, LoadSourcesError, Options, Sources, Warnings,
 };
-use runestick::{Context, FromValue, IntoTypeHash, Module, Source, Unit, Vm, VmExecution};
+use runestick::{
+    CompileMeta, Context, FromValue, Hash, IntoTypeHash, Module, Source, Unit, UnitFn, Vm, VmError,
+    VmErrorKind, VmExecution,
+};
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -60,10 +63,32 @@ impl ScriptEngineBuilder {
             sources: Sources::new(),
             rt,
             days: Default::default(),
+            tests: Default::default(),
         };
 
         let _ = engine.reload();
         Ok(engine)
+    }
+}
+
+#[derive(Default)]
+struct TestVisitor {
+    test_functions: Vec<(Hash, CompileMeta)>,
+}
+
+impl rune::CompileVisitor for TestVisitor {
+    fn visit_meta(
+        &mut self,
+        _source_id: runestick::SourceId,
+        meta: &runestick::CompileMeta,
+        _span: runestick::Span,
+    ) {
+        let type_hash = match &meta.kind {
+            runestick::CompileMetaKind::Function { is_test, type_hash } if *is_test => type_hash,
+            _ => return,
+        };
+
+        self.test_functions.push((*type_hash, meta.clone()));
     }
 }
 
@@ -76,6 +101,7 @@ pub struct ScriptEngine {
     sources: Sources,
     rt: runtime::Runtime,
     days: HashMap<u32, f64>,
+    tests: Vec<(Hash, CompileMeta)>,
 }
 
 impl ScriptEngine {
@@ -90,15 +116,20 @@ impl ScriptEngine {
         let mut warnings = Warnings::new();
 
         self.sources = sources;
-        match load_sources(
+        let mut test_finder = TestVisitor::default();
+        let mut source_loader = rune::FileSourceLoader::new();
+        match rune::load_sources_with_visitor(
             &self.context,
             &options,
             &mut self.sources,
             &mut errors,
             &mut warnings,
+            &mut test_finder,
+            &mut source_loader,
         ) {
             Ok(unit) => {
                 self.unit = Arc::new(unit);
+                self.tests = test_finder.test_functions;
             }
             Err(e @ LoadSourcesError) => {
                 let mut writer = StandardStream::stderr(ColorChoice::Always);
@@ -120,6 +151,69 @@ impl ScriptEngine {
         }
 
         Ok(())
+    }
+
+    pub fn run_tests(&mut self) -> Result<bool> {
+        // TODO: use rune-tests capture_output to stop prints from tests from showing
+        let runtime = Arc::new(self.context.runtime());
+
+        let start = Instant::now();
+        let mut failures = HashMap::new();
+
+        for test in &self.tests {
+            print!("testing {:40} ", test.1.item.item);
+            let mut vm = Vm::new(runtime.clone(), self.unit.clone());
+
+            let info = self.unit.lookup(test.0).ok_or_else(|| {
+                VmError::from(VmErrorKind::MissingEntry {
+                    hash: test.0,
+                    item: test.1.item.item.clone(),
+                })
+            })?;
+
+            let offset = match info {
+                // NB: we ignore the calling convention.
+                // everything is just async when called externally.
+                UnitFn::Offset { offset, .. } => offset,
+                _ => {
+                    return Err(VmError::from(VmErrorKind::MissingFunction { hash: test.0 }).into());
+                }
+            };
+
+            vm.set_ip(offset);
+            match self.rt.block_on(vm.async_complete()) {
+                Err(e) => {
+                    // TODO: store output here
+                    failures.insert(test.1.item.item.clone(), e);
+                    println!("failed");
+                }
+                Ok(_) => {
+                    println!("ok.")
+                }
+            }
+        }
+
+        let elapsed = start.elapsed();
+
+        for (item, error) in &failures {
+            println!("----------------------------------------");
+            println!("Test: {}\n", item);
+
+            let mut writer = StandardStream::stderr(ColorChoice::Always);
+            error
+                .emit_diagnostics(&mut writer, &self.sources)
+                .expect("failed writing info");
+        }
+
+        println!("====");
+        println!(
+            "Ran {} tests with {} failures in {:.3} seconds",
+            self.tests.len(),
+            failures.len(),
+            elapsed.as_secs_f64()
+        );
+
+        Ok(failures.is_empty())
     }
 
     pub fn call_all(&mut self) -> Result<()> {
@@ -242,6 +336,12 @@ fn run_reload(mut engine: ScriptEngine) -> Result<()> {
             continue;
         }
 
+        eprintln!("Starting hot reload...");
+        if !engine.run_tests().unwrap_or(false) {
+            eprintln!("failed tests; not rerunning...");
+            continue;
+        }
+
         let days = updated_files
             .iter()
             .filter(|v| v.starts_with("day"))
@@ -265,6 +365,10 @@ fn run_reload(mut engine: ScriptEngine) -> Result<()> {
 
 fn run(run_once: bool) -> Result<()> {
     let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
+
+    if !engine.run_tests().unwrap_or(false) {
+        eprintln!("failed tests; not rerunning...");
+    }
 
     if run_once {
         engine.call_all()

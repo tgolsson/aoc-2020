@@ -188,58 +188,7 @@ pub fn parse_all(it) {
     PassportDatas
 }
 
-pub fn tests() {
-    let make_valid =|| {
-        parse_passport(["pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980",
-                        "hcl:#623a2f",
-                        ""
-                        ].iter())
-    };
-
-    let p = make_valid();
-    p.pid = None;
-    assert!(!p.is_some());
-    assert!(!p.validate());
-
-    let p = make_valid();
-    p.hgt = None;
-    assert!(!p.is_some());
-    assert!(!p.validate());
-
-    let p = make_valid();
-    p.ecl = None;
-    assert!(!p.is_some());
-    assert!(!p.validate());
-
-    let p2 = make_valid();
-    p2.iyr = None;
-    assert!(!p2.is_some());
-    assert!(!p2.validate());
-
-    let p3 = make_valid();
-    p3.eyr = None;
-    assert!(!p3.is_some());
-    assert!(!p3.validate());
-    let p1 = make_valid();
-    p1.byr = None;
-    assert!(!p1.is_some());
-    assert!(!p1.validate());
-
-
-    let p = make_valid();
-    p.hcl = None;
-    assert!(!p.is_some());
-    assert!(!p.validate(), "{:?}", p);
-
-    let p = make_valid();
-    p.cid = None;
-    assert!(p.is_some());
-    assert!(p.validate(), "{:?}", p);
-
-}
-
 pub async fn run() {
-    // tests();
     let items = read_file("inputs/day4.txt").await?;
     let passports = parse_all(items);
 

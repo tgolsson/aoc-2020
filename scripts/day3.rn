@@ -53,7 +53,53 @@ fn run_slope(map, slope) {
             .count()
 }
 
-pub async fn run () {
+#[test]
+fn test_part1()
+{
+    let rows = [
+        "..##.......",
+        "#...#...#..",
+        ".#....#..#.",
+        "..#.#...#.#",
+        ".#...##..#.",
+        "..#.##.....",
+        ".#.#.#....#",
+        ".#........#",
+        "#.##...#...",
+        "#...##....#",
+        ".#..#...#.#",
+    ];
+
+    let map = rows.iter().map(scan_line).fold(Map::new(), |map, row| map.add(row));
+    assert_eq!(run_slope(map, (3, 1)), 7);
+}
+
+#[test]
+fn test_part2()
+{
+    let rows = [
+        "..##.......",
+        "#...#...#..",
+        ".#....#..#.",
+        "..#.#...#.#",
+        ".#...##..#.",
+        "..#.##.....",
+        ".#.#.#....#",
+        ".#........#",
+        "#.##...#...",
+        "#...##....#",
+        ".#..#...#.#",
+    ];
+
+    let map = rows.iter().map(scan_line).fold(Map::new(), |map, row| map.add(row));
+
+    let slopes = [(1, 1), (5, 1), (7, 1), (1, 2)];
+    assert_eq!(slopes.iter().map(|slope| run_slope(map, slope)).fold(7, |acc, colls| acc * colls), 336);
+}
+
+pub async fn run() {
+    test_part1; test_part2;
+
     let map = read_file("inputs/day3.txt").await?
     .filter(|v| v != "").map(scan_line).fold(Map::new(), |map, row| map.add(row));
 

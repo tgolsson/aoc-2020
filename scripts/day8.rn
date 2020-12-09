@@ -49,6 +49,7 @@ fn eval(program) {
 fn try_replace(program) {
     for idx in 0..program.len() {
         let original_value = program[idx];
+
         program[idx] = match original_value {
             Inst::Nop(step) => Inst::Jmp(step),
             Inst::Acc(step) => continue,
@@ -62,7 +63,7 @@ fn try_replace(program) {
     }
 }
 
-//#[cfg(test)]
+#[test]
 async fn test_part1() {
     let inputs = read_file("inputs/day8_test.txt")
         .await?
@@ -72,8 +73,7 @@ async fn test_part1() {
     assert_eq!(eval(inputs), Err(5));
 }
 
-
-//#[cfg(test)]
+#[test]
 async fn test_part2() {
     let inputs = read_file("inputs/day8_test.txt")
         .await?
@@ -84,8 +84,8 @@ async fn test_part2() {
 }
 
 pub async fn run() {
-    test_part1().await;
-    test_part2().await;
+    test_part1;
+    test_part2;
 
     let inputs = read_file("inputs/day8.txt")
         .await?

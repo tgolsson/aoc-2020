@@ -1,0 +1,175 @@
+use crate::utils::{read_file, iter};
+
+fn search_range(set, offset, value, prefix) {
+    let offset2 = offset + 1;
+    for inner_offset in 0..prefix {
+        let missing = value - set[offset + inner_offset];
+        for idx in inner_offset + 1..prefix {
+            if set[offset + idx] == missing {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+fn find_invalid_number(set, prefix) {
+    for offset in 0..set.len() - prefix {
+        let value = set[offset + prefix];
+        if search_range(set, offset, value, prefix) {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+enum MoveState {
+    HareForward,
+    HareBackward,
+}
+
+fn find_replacement_range(inputs, target)
+{
+    let turtle = 0;
+    let hare = 1;
+    let hare_direction = MoveState::HareForward;
+    let current_sum = inputs[0];
+    loop {
+        if current_sum == target {
+            let (min, max) = inputs
+                                .iter()
+                                .skip(turtle)
+                                .take(hare - turtle)
+                                .fold((999999999, 0), |(min, max), v| (std::int::min(v, min),  std::int::max(max, v)));
+
+            return min + max;
+        }
+
+        // need to shrink range
+        if current_sum > target {
+            match hare_direction {
+                // If hare is moving forward; move the turtle once and then start retrieving hare
+                MoveState::HareForward => {
+                    current_sum -= inputs[turtle];
+                    turtle += 1;
+                    hare_direction = MoveState::HareBackward;
+                }
+                // If hair is already moving back; bring one step
+                MoveState::HareBackward => {
+                    if hare == (turtle + 1) {
+                        // If intersecting, move turtle and hare and start send again
+                        current_sum = current_sum - inputs[turtle] + inputs[hare];
+                        turtle += 1;
+                        hare += 1;
+                        hare_direction = MoveState::HareForward;
+                    } else {
+                        current_sum -= inputs[hare - 1];
+                        hare -= 1;
+                    }
+                }
+            }
+        } else {
+            match hare_direction {
+                // Hare is moving out, send further
+                MoveState::HareForward => {
+                    current_sum = current_sum + inputs[hare];
+                    hare += 1;
+                }
+                // Hare is coming back but sum is too small, no subrange can work; step both
+                MoveState::HareBackward => {
+                    current_sum = current_sum - inputs[turtle];
+                    turtle += 1;
+
+                    current_sum = current_sum + inputs[hare];
+                    hare += 1;
+
+                    hare_direction = MoveState::HareForward;
+                }
+            }
+        }
+    }
+}
+
+pub async fn run() {
+    part1;
+    part2;
+
+    let raw = read_file("inputs/day9.txt")
+        .await?
+        .filter(|v| v != "")
+        .map(std::string::parse_int)
+        .map(Result::unwrap)
+        .collect_vec();
+
+    let task1 = find_invalid_number(raw, 25)?;
+    assert_eq!(task1, 138879426);
+
+    let task2 = find_replacement_range(raw, task1);
+    assert_eq!(task2, 23761694);
+
+    (task1, task2)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SECTION TESTS
+////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn part2() {
+    let example_inputs = [
+        35,
+        20,
+        15,
+        25,
+        47,
+        40,
+        62,
+        55,
+        65,
+        95,
+        102,
+        117,
+        150,
+        182,
+        127,
+        219,
+        299,
+        277,
+        309,
+        576,
+    ];
+
+    let r = find_replacement_range(example_inputs, 127);
+    assert_eq!(r, 62);
+}
+
+#[test]
+fn part1()
+{
+    let example_inputs = [
+        35,
+        20,
+        15,
+        25,
+        47,
+        40,
+        62,
+        55,
+        65,
+        95,
+        102,
+        117,
+        150,
+        182,
+        127,
+        219,
+        299,
+        277,
+        309,
+        576,
+    ];
+
+    assert_eq!(find_invalid_number(example_inputs, 5), Some(127));
+
+}

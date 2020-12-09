@@ -3,11 +3,9 @@ use std::iter::range;
 
 pub(crate) mod iter {
     pub fn all_pairs(data) {
-       let count = data.len();
-       for i in 0..count {
-           let a = data[i];
-           for j in (i+1)..count {
-                yield [a, data[j]]
+       for (i, a) in data.iter().enumerate() {
+           for b in data.iter().skip(i + 1) {
+                yield [a, b]
            }
        }
     }
