@@ -254,7 +254,7 @@ impl ScriptEngine {
             }
         };
 
-        let result = <(u32, u32)>::from_value(result);
+        let result = <(u64, u64)>::from_value(result);
         let elapsed = start.elapsed();
 
         let previous_time = self.days[&day];

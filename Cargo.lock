@@ -146,6 +146,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "codespan"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "991d34632921756cbe9e3e1736b2e1f12f16166a9c9cd91979d96d4c0a086b63"
+dependencies = [
+ "codespan-reporting",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -980,6 +989,7 @@ dependencies = [
 name = "rune"
 version = "0.7.0"
 dependencies = [
+ "codespan",
  "codespan-reporting",
  "hashbrown",
  "itoa",
@@ -1020,6 +1030,7 @@ version = "0.7.0"
 dependencies = [
  "anyhow",
  "byteorder",
+ "fnv",
  "futures-core",
  "futures-util",
  "hashbrown",
