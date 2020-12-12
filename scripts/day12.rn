@@ -1,0 +1,185 @@
+use crate::utils::read_file;
+use std::int::abs;
+
+enum Command {
+    North(value),
+    East(value),
+    South(value),
+    West(value),
+    Left(value),
+    Right(value),
+    Forward(value),
+}
+
+impl Command {
+    fn from_string(str) {
+        let it = str.chars();
+
+        let command = it.next()?;
+        let value = it
+            .map(|c| std::char::to_digit(c, 10)?)
+            .fold(0, |a, v| a * 10 + v);
+
+        match command {
+            'N' => Command::North(value),
+            'E' => Command::East(value),
+            'S' => Command::South(value),
+            'W' => Command::West(value),
+            'L' => Command::Left(value),
+            'R' => Command::Right(value),
+            'F' => Command::Forward(value),
+        }
+    }
+}
+
+fn apply_command(transform, command) {
+    match command {
+        Command::North(value) => transform.1 += value,
+        Command::South(value) => transform.1 -= value,
+        Command::East(value) => transform.0 += value,
+        Command::West(value) => transform.0 -= value,
+        Command::Left(value) => transform.2 = (transform.2 + (360 - value)) % 360,
+        Command::Right(value) => transform.2 = (transform.2 + value) % 360,
+        Command::Forward(value) => match transform.2 {
+            0 => transform.0 += value,
+            90 => transform.1 -= value,
+            180 => transform.0 -= value,
+            270 => transform.1 += value,
+            _ => panic!("unexpected rotation: {}", transform.2)
+        },
+    }
+
+    transform
+}
+
+fn rotate_left(waypoint, value) {
+    match value {
+        0 => waypoint,
+        90 => (-waypoint.1, waypoint.0),
+        180 => (-waypoint.0, -waypoint.1),
+        270 => (waypoint.1, -waypoint.0),
+        360 => waypoint,
+        _ => panic!("unexpected rotation: {}", value),
+    }
+}
+
+fn move_waypoint_command((transform, waypoint), command) {
+    match command {
+        Command::North(value) => waypoint.1 += value,
+        Command::South(value) => waypoint.1 -= value,
+        Command::East(value) => waypoint.0 += value,
+        Command::West(value) => waypoint.0 -= value,
+        Command::Left(value) => waypoint = rotate_left(waypoint, value),
+        Command::Right(value) => waypoint = rotate_left(waypoint, 360 - value),
+        Command::Forward(value) => transform = (transform.0 + waypoint.0 * value, transform.1 + waypoint.1 * value),
+    }
+
+    (transform, waypoint)
+}
+
+pub async fn run() {
+    test_part1; test_part2; test_part2_ss; test_part2_rots;
+    let commands = read_file("inputs/day12.txt").await?.map(Command::from_string).collect_vec();
+
+    let final_position = commands
+        .iter()
+        .fold((0, 0, 0), apply_command);
+    let t1 = abs(final_position.0) + abs(final_position.1);
+
+    let (final_position, _) = commands
+        .iter()
+        .fold(((0, 0), (10, 1)), move_waypoint_command);
+    let t2 = abs(final_position.0) + abs(final_position.1);
+
+    assert_eq!((t1, t2), (882, 28885));
+    (t1, t2)
+}
+
+#[test]
+fn test_part1() {
+    let raw = [
+        "F10",
+        "N3",
+        "S3",
+        "N3",
+        "S3",
+        "S3",
+        "N3",
+        "N3",
+        "F7",
+        "E3",
+        "W3",
+        "R90",
+        "L90",
+        "L90",
+        "L90",
+        "L90",
+        "R90",
+        "L90",
+        "F11",
+    ];
+
+    let commands = raw.iter().map(Command::from_string).collect_vec();
+    let final_position = commands.iter().fold((0, 0, 0), apply_command);
+    assert_eq!(abs(final_position.0) + abs(final_position.1), 25);
+}
+
+#[test]
+fn test_part2() {
+    let raw = [
+        "F10",
+        "N3",
+        "S3",
+        "N3",
+        "F7",
+        "R90",
+        "L360",
+        "R360",
+        "L360",
+        "R360",
+        "L270",
+        "R270",
+        "L270",
+        "R270",
+        "R90",
+        "L90",
+        "R90",
+        "L90",
+        "F11",
+    ];
+
+    let commands = raw.iter().map(Command::from_string).collect_vec();
+    let (final_position, _) = commands.iter().fold(((0, 0), (10, 1)), move_waypoint_command);
+    assert_eq!(abs(final_position.0) + abs(final_position.1), 286);
+}
+
+#[test]
+fn test_part2_rots() {
+    let r = |v| rotate_left((10, 1), 360 - v);
+    let l = |v| rotate_left((10, 1), v);
+    assert_eq!(l(0), (10, 1));
+    assert_eq!(l(90), (-1, 10));
+    assert_eq!(l(180), (-10, -1));
+    assert_eq!(l(270), (1, -10));
+    assert_eq!(l(360), (10, 1));
+
+    assert_eq!(r(0), (10, 1));
+    assert_eq!(r(90), (1, -10));
+    assert_eq!(r(180), (-10, -1));
+    assert_eq!(r(270), (-1, 10));
+    assert_eq!(r(360), (10, 1));
+}
+
+#[test]
+fn test_part2_ss() {
+    assert_eq!(move_waypoint_command(((0, 0), (10, 1)), Command::Forward(10)), ((100, 10), (10, 1)));
+    assert_eq!(move_waypoint_command(((100, 10), (10, 1)), Command::North(3)), ((100, 10), (10, 4)));
+    assert_eq!(move_waypoint_command(((100, 10), (10, 4)), Command::Forward(7)), ((170, 38), (10, 4)));
+    assert_eq!(move_waypoint_command(((170, 38), (10, 4)), Command::Right(90)), ((170, 38), (4, -10)));
+    assert_eq!(move_waypoint_command(((170, 38), (4, -10)), Command::Left(90)), ((170, 38), (10, 4)));
+    assert_eq!(move_waypoint_command(((170, 38), (10, 4)), Command::Left(90)), ((170, 38), (-4, 10)));
+    assert_eq!(move_waypoint_command(((170, 38), (-4, 10)), Command::Right(90)), ((170, 38), (10, 4)));
+    assert_eq!(move_waypoint_command(((170, 38), (10, 4)), Command::Right(90)), ((170, 38), (4, -10)));
+    assert_eq!(move_waypoint_command(((170, 38), (10, 4)), Command::Right(180)), ((170, 38), (-10, -4)));
+    assert_eq!(move_waypoint_command(((170, 38), (4, -10)), Command::Forward(11)), ((214, -72), (4, -10)));
+}
