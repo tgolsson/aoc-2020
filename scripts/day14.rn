@@ -1,0 +1,179 @@
+use std::collections::HashMap;
+use crate::utils::{read_file, iter};
+
+
+fn recurse_generate_addresses(accum, address, mask_ors, idx) {
+    if idx < mask_ors.len() - 1 {
+        recurse_generate_addresses(accum, address, mask_ors, idx + 1);
+        recurse_generate_addresses(accum, address | 1 << (35 - mask_ors[idx]), mask_ors, idx + 1);
+    } else {
+        accum.push(address);
+        accum.push(address | 1 << (35 - mask_ors[idx]));
+    }
+}
+
+fn read_value(memory, index) {
+    memory.get(index).expect("must exist in memory")
+}
+
+enum Command {
+    Mask(v),
+    Mem(idx, value)
+}
+
+pub fn parse_masks_and_mem(it) {
+    let out = [];
+    for line in it {
+        if line.starts_with("mask") {
+            let mask = line.split('=').skip(1).next()?.trim();
+            out.push(Command::Mask(mask));
+        } else {
+            let rest = line.split_str(" = ");
+            let lhs = rest.next()?;
+            let rhs = rest.next()?;
+            let mem = lhs.chars().skip(4).take(lhs.len() - 5).fold(String::new(), |a, v| { a.push(v); a });
+            out.push(Command::Mem(std::string::parse_int(mem)?, std::string::parse_int(rhs)?));
+        }
+    }
+
+    Some(out)
+}
+
+fn run_commands(it) {
+    let mask_ors = [];
+    let m1 = 0;
+    let m2 = 0;
+    let memory = HashMap::new();
+    for command in it {
+        match command {
+            Command::Mask(m) => {
+                m1 = 0;
+                m2 = 0;
+
+                for v in m.chars() {
+                    m1 = m1 << 1 | match v {
+                        'X' => 1,
+                        '0' => 0,
+                        '1' => 1,
+                    };
+
+                    m2 = m2 << 1 | match v {
+                        'X' => 0,
+                        '0' => 0,
+                        '1' => 1,
+                    };
+                }
+            },
+            Command::Mem(idx, v) => memory.insert(idx, (v & m1) | m2),
+        }
+    }
+    memory
+}
+
+
+fn run_commands2(it) {
+    let mask_ors = [];
+    let m1 = 0;
+    let m2 = 0;
+    let memory = HashMap::new();
+    for command in it {
+        match command {
+            Command::Mask(m) => {
+                m1 = 0;
+                m2 = 0;
+                let xs = [];
+                for (idx, v) in m.chars().enumerate() {
+                    m1 = m1 << 1 |  match v {
+                        'X' => 0,
+                        '0' => 0,
+                        '1' => 1,
+                    };
+
+                    m2 = m2 << 1 | match v {
+                        'X' => 0,
+                        '0' => 1,
+                        '1' => 0,
+                    };
+                    if v == 'X' {
+                        xs.push(idx);
+                    }
+                }
+
+                mask_ors.clear();
+                recurse_generate_addresses(mask_ors, 0, xs, 0);
+            },
+            Command::Mem(idx, v) => {
+                let raw_address = (idx & m2) | m1;
+                for variant in mask_ors {
+                    memory.insert(raw_address | variant, v);
+                }
+            }
+        }
+    }
+    memory
+}
+
+pub async fn run() {
+    let it = parse_masks_and_mem(read_file("inputs/day14.txt").await?)?;
+
+    let res = run_commands(it);
+    let sum = res.values().sum();
+
+
+    let res = run_commands2(it);
+    let sum2 = res.values().sum();
+
+    assert_eq!(sum, 9615006043476);
+    assert_eq!(sum2, 4275496544925);
+    (sum, sum2)
+}
+
+
+
+#[test]
+fn test_part1() {
+    let insts = [
+        Command::Mask("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX1XXXX0X"),
+        Command::Mem(8, 11),
+        Command::Mem(8, 0),
+        Command::Mem(7, 101),
+    ];
+    let res = run_commands(insts);
+    assert_eq!(read_value(res, 7), 101);
+    assert_eq!(read_value(res, 8), 64);
+
+    let sum = res.values().sum();
+    assert_eq!(sum, 165);
+}
+
+
+#[test]
+fn test_part2() {
+    let memory = HashMap::new();
+    let res = run_commands2([
+        Command::Mask("000000000000000000000000000000X1001X"),
+        Command::Mem(42, 100),
+        Command::Mask("00000000000000000000000000000000X0XX"),
+        Command::Mem(26, 1),
+    ]);
+    let sum = res.values().sum();
+    assert_eq!(sum, 208);
+}
+
+
+#[test]
+pub fn test_parse() {
+    let res = "mask = XXXXXXXXXXXXXXXXXXXXXXXXXXXXX1XXXX0X
+mem[8] = 11
+mem[7] = 101
+mem[8] = 0";
+
+    let parsed = parse_masks_and_mem(res.split('\n')).expect("success");
+    assert_eq!(parsed, [
+        Command::Mask("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX1XXXX0X"),
+        Command::Mem(8, 11),
+        Command::Mem(7, 101),
+        Command::Mem(8, 0)
+    ]);
+}
+

@@ -84,9 +84,6 @@ async fn test_part2() {
 }
 
 pub async fn run() {
-    test_part1;
-    test_part2;
-
     let inputs = read_file("inputs/day8.txt")
         .await?
         .map(instruction)

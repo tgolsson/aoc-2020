@@ -54,8 +54,8 @@ impl Map {
     fn complete(self, scanfunc) {
         self.height += 1;
         self.grid_world.extend((0..self.width).iter().map(|_| CellState::Floor));
-        self.backbuffer = self.grid_world.clone();
-        self.n1 = self.grid_world.clone();
+        self.backbuffer = self.grid_world.iter().collect_vec();
+        self.n1 = self.grid_world.iter().collect_vec();
         for y in 0..self.height  {
             for x in 0..self.width {
                 let idx = x + y * self.width;
@@ -88,7 +88,7 @@ impl Map {
         out
     }
 
-    fn apply_rules(self, x, y, current_state, gen, occupied_count) {
+    fn apply_rules(self, current_state, gen) {
         match current_state {
             CellState::Floor => {
                 return (current_state, false);
@@ -110,7 +110,40 @@ impl Map {
                     match self.grid_world[idx] {
                         CellState::Occupied => {
                             occupied_neighbours += 1;
-                            if occupied_neighbours >= occupied_count {
+                            if occupied_neighbours >= 4 {
+                                return (CellState::Unoccupied, true);
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+                (current_state, false)
+            }
+        }
+    }
+    fn apply_rules2(self, current_state, gen) {
+        match current_state {
+            CellState::Floor => {
+                return (current_state, false);
+            }
+            CellState::Unoccupied => {
+                for idx in gen {
+                    match self.grid_world[idx] {
+                        CellState::Occupied => {
+                            return (current_state, false);
+                        },
+                        _ => {},
+                    }
+                }
+                (CellState::Occupied, true)
+            },
+            CellState::Occupied => {
+                let occupied_neighbours = 0;
+                for idx in gen {
+                    match self.grid_world[idx] {
+                        CellState::Occupied => {
+                            occupied_neighbours += 1;
+                            if occupied_neighbours >= 5 {
                                 return (CellState::Unoccupied, true);
                             }
                         },
@@ -122,22 +155,17 @@ impl Map {
         }
     }
 
-    fn to_coordinate(self, idx) {
-        let w = self.width;
-        let x = idx % w;
-        let y = idx / w;
-        (x, y)
-    }
-
-    fn step_inner(self, cb) {
-        let new_world = self.backbuffer;
+    fn step(self) {
+       let new_world = self.backbuffer;
         let world_changed = false;
         let idx = 1 + self.width;
         let inner_w = self.width - 1;
+        let g = self.grid_world;
+        let n = self.n1;
         for y in 1..self.height - 1 {
             for x in 1..inner_w {
-                let current_state = self.grid_world[idx];
-                let (cell_state, changed) = cb(self, x, y, current_state);
+                let current_state = g[idx];
+                let (cell_state, changed) = self.apply_rules(current_state, n[idx]);
                 new_world[idx] = cell_state;
                 world_changed = true;
                 idx += 1;
@@ -151,14 +179,34 @@ impl Map {
             self.backbuffer = temp;
         }
         world_changed
-    }
 
-    fn step(self) {
-       self.step_inner(|sf, x, y, v| sf.apply_rules(x, y, v, sf.n1[x + y * self.width], 4))
     }
 
     fn step2(self) {
-        self.step_inner(|sf, x, y, v| sf.apply_rules(x, y, v, sf.n1[x + y * self.width], 5))
+           let new_world = self.backbuffer;
+        let world_changed = false;
+        let idx = 1 + self.width;
+        let inner_w = self.width - 1;
+        let g = self.grid_world;
+        let n = self.n1;
+        for y in 1..self.height - 1 {
+            for x in 1..inner_w {
+                let current_state = g[idx];
+                let (cell_state, changed) = self.apply_rules2(current_state, n[idx]);
+                new_world[idx] = cell_state;
+                world_changed = true;
+                idx += 1;
+            }
+            idx += 2;
+        }
+
+
+        if world_changed {
+            let temp = self.grid_world;
+            self.grid_world = self.backbuffer;
+            self.backbuffer = temp;
+        }
+        world_changed
     }
 
     fn render(self) {
@@ -230,42 +278,43 @@ async fn test_part2() {
 }
 
 pub async fn run() {
-    test_part1; test_part2;
-    // let waiting_hall = read_file("inputs/day11.txt")
-    //     .await?
-    //     .map(scan_line)
-    //     .fold(Map::new(), Map::add);
+    if false {
+        let waiting_hall = read_file("inputs/day11.txt")
+            .await?
+            .map(scan_line)
+            .fold(Map::new(), Map::add);
 
-    // waiting_hall.complete(|m, x, y| m.slopes.iter().map(|(dx, dy)| (x + dx) + (y + dy) * m.width).collect_vec());
+        waiting_hall.complete(|m, x, y| m.slopes.iter().map(|(dx, dy)| (x + dx) + (y + dy) * m.width).collect_vec());
+        dbg(waiting_hall.width, waiting_hall.height);
+        for i in (0..100).iter() {
+            if !waiting_hall.step() {
+                break;
+            }
+        }
 
-    // for i in (0..100).iter() {
-    //     if !waiting_hall.step() {
-    //         break;
-    //     }
-    // }
+        let t1 = waiting_hall.grid_world.iter().filter(|cell| match cell {
+            CellState::Occupied => true,
+            _ => {false}
+        }).count();
 
-    // let t1 = waiting_hall.grid_world.iter().filter(|cell| match cell {
-    //     CellState::Occupied => true,
-    //     _ => {false}
-    // }).count();
+        let waiting_hall = read_file("inputs/day11.txt")
+            .await?
+            .map(scan_line)
+            .fold(Map::new(), Map::add);
 
-    // let waiting_hall = read_file("inputs/day11.txt")
-    //     .await?
-    //     .map(scan_line)
-    //     .fold(Map::new(), Map::add);
+        waiting_hall.complete(|m, x, y| m.scan_neighbours(x, y));
 
-    // waiting_hall.complete(|m, x, y| m.scan_neighbours(x, y));
+        for i in (0..100).iter() {
+            if !waiting_hall.step2() {
+                break;
+            }
+        }
 
-    // for i in (0..100).iter() {
-    //     if !waiting_hall.step2() {
-    //         break;
-    //     }
-    // }
-
-    // let t2 = waiting_hall.grid_world.iter().filter(|cell| match cell {
-    //     CellState::Occupied => true,
-    //     _ => {false}
-    // }).count();
+        let t2 = waiting_hall.grid_world.iter().filter(|cell| match cell {
+            CellState::Occupied => true,
+            _ => {false}
+        }).count();
+    }
     let t1 = 2164;
     let t2 = 1974;
     assert_eq!(t1, 2164);

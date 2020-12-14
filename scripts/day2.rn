@@ -9,7 +9,7 @@ struct Constraint {
 pub fn parse_password(v) {
     let i = v.split(' ');
     let counts = i.next().expect("counts");
-    let char = i.next().map(|v| v.char_at(0))???;
+    let char = i.next().map(|v| v.char_at(0))??;
     let password = i.next().expect("the password");
 
     let c1c2 = counts.split('-');
@@ -31,7 +31,7 @@ pub fn is_valid2(v) {
     let char1 = password.char_at(c1 - 1);
     let char2 = password.char_at(c2 - 1);
 
-    (char1 == Ok(Some(character))) != (char2 == Ok(Some(character)))
+    (char1 == Some(character)) != (char2 == Some(character))
 }
 
 #[test]
@@ -57,8 +57,6 @@ fn test_part2() {
 }
 
 pub async fn run() {
-    test_part1; test_part2;
-
     let lines = read_file("inputs/day2.txt").await?.filter(|v| v != "").map(parse_password).collect_vec();
     let matches_1 = lines.iter().filter(is_valid1).count();
     let matches_2 = lines.iter().filter(is_valid2).count();

@@ -72,13 +72,12 @@ fn move_waypoint_command((transform, waypoint), command) {
         Command::Left(value) => waypoint = rotate_left(waypoint, value),
         Command::Right(value) => waypoint = rotate_left(waypoint, 360 - value),
         Command::Forward(value) => transform = (transform.0 + waypoint.0 * value, transform.1 + waypoint.1 * value),
-    }
+    };
 
     (transform, waypoint)
 }
 
 pub async fn run() {
-    test_part1; test_part2; test_part2_ss; test_part2_rots;
     let commands = read_file("inputs/day12.txt").await?.map(Command::from_string).collect_vec();
 
     let final_position = commands

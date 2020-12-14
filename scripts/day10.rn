@@ -112,8 +112,6 @@ fn count_paths_topological_reverse(values) {
 }
 
 pub async fn run() {
-    test_part1; test_part2;
-
     let inputs = read_file("inputs/day10.txt")
         .await?
         .filter(|v| v != "")

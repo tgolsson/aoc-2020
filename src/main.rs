@@ -10,8 +10,10 @@ use runestick::{
     VmErrorKind, VmExecution,
 };
 use std::{
+    cell::RefCell,
     collections::HashMap,
     path::PathBuf,
+    rc::Rc,
     sync::{
         mpsc::{channel, Receiver},
         Arc,
@@ -72,23 +74,26 @@ impl ScriptEngineBuilder {
 }
 
 #[derive(Default)]
-struct TestVisitor {
-    test_functions: Vec<(Hash, CompileMeta)>,
+pub struct TestVisitor {
+    test_functions: RefCell<Vec<(Hash, CompileMeta)>>,
+}
+impl TestVisitor {
+    /// Convert visitor into test functions.
+    pub(crate) fn into_test_functions(self) -> Vec<(Hash, CompileMeta)> {
+        self.test_functions.into_inner()
+    }
 }
 
 impl rune::CompileVisitor for TestVisitor {
-    fn visit_meta(
-        &mut self,
-        _source_id: runestick::SourceId,
-        meta: &runestick::CompileMeta,
-        _span: runestick::Span,
-    ) {
+    fn register_meta(&self, meta: &CompileMeta) {
         let type_hash = match &meta.kind {
             runestick::CompileMetaKind::Function { is_test, type_hash } if *is_test => type_hash,
             _ => return,
         };
 
-        self.test_functions.push((*type_hash, meta.clone()));
+        self.test_functions
+            .borrow_mut()
+            .push((*type_hash, meta.clone()));
     }
 }
 
@@ -116,20 +121,24 @@ impl ScriptEngine {
         let mut warnings = Warnings::new();
 
         self.sources = sources;
-        let mut test_finder = TestVisitor::default();
-        let mut source_loader = rune::FileSourceLoader::new();
+
+        let test_finder = Rc::new(TestVisitor::default());
+        let source_loader = Rc::new(rune::FileSourceLoader::new());
         match rune::load_sources_with_visitor(
             &self.context,
             &options,
             &mut self.sources,
             &mut errors,
             &mut warnings,
-            &mut test_finder,
-            &mut source_loader,
+            test_finder.clone(),
+            source_loader.clone(),
         ) {
             Ok(unit) => {
                 self.unit = Arc::new(unit);
-                self.tests = test_finder.test_functions;
+                self.tests = match Rc::try_unwrap(test_finder) {
+                    Ok(visitor) => visitor.into_test_functions(),
+                    Err(_) => panic!("cannot take test_finder, something is holding a ref"),
+                };
             }
             Err(e @ LoadSourcesError) => {
                 let mut writer = StandardStream::stderr(ColorChoice::Always);

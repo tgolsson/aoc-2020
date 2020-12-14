@@ -1,0 +1,96 @@
+
+#[test]
+fn test_part1() {
+    let timestamp = 939;
+    let ids = [
+        7, 13, 59, 31, 19
+    ];
+
+
+    let closest_previous_release = ids.iter().map(|id| (id, (timestamp / id + 1) * id)).collect_vec();
+    let res = closest_previous_release.iter().fold((0, 9999), |(cid, cdep), (id, dep)| if dep < cdep { (id, dep)} else { (cid, cdep)});
+    assert_eq!((res.1 - timestamp) * res.0, 295);
+}
+
+#[test]
+fn test_part2() {
+    let ids = [
+        17,-1,13,19
+    ];
+    assert_eq!(task2(ids), 3417);
+
+    let ids = [
+        7, 13, -1, -1, 59, -1, 31, 19
+    ];
+
+    assert_eq!(task2(ids), 1068781);
+}
+
+
+fn task1(timestamp, ids) {
+    let res = ids
+        .iter()
+        .filter(|v| v != -1)
+        .map(|id| (id, (timestamp / id + 1) * id))
+        .fold((0, 99999999999), |(cid, cdep), (id, dep)| {
+            if dep < cdep {
+                (id, dep)
+            } else {
+                (cid, cdep)
+            }
+        });
+
+    (res.1 - timestamp) * res.0
+}
+
+fn task2(ids) {
+    let cloned = ids.iter().filter(|v| v!=-1).collect_vec();
+    cloned.sort_int();
+
+    let (step_idx, step_var) = ids.iter().enumerate().find(|(idx, period)| period == cloned[cloned.len() - 1])?;
+    let (second_idx, second_cvar) = ids.iter().enumerate().find(|(idx, period)| period == cloned[cloned.len() - 2])?;
+
+    let constraints = ids
+        .iter()
+        .enumerate()
+        .filter(|v| v.1 != -1 && v.1 != step_var)
+        .map(|(idx, period)| {
+            (idx - step_idx, period)
+         })
+         .collect_vec();
+
+    let it = step_var;
+    let it_step = step_var;
+    let it_count = 0;
+    loop {
+        it += it_step;
+        let (is_solution, now_step) = constraints
+            .iter()
+            .fold((true, step_var), |(is_solution, accum_step), (cv, period)| {
+                if (it + cv) % period == 0 {
+                    (is_solution, accum_step * period)
+                } else {
+                    (false, accum_step)
+                }
+            });
+
+        if is_solution {
+            break;
+        }
+
+        it_step = now_step;
+        it_count += 1;
+    }
+    it - step_idx
+}
+
+
+pub async fn run() {
+    let timestamp = 1000391;
+    let ids = [19,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,37,-1,-1,-1,-1,-1,383,-1,-1,-1,-1,-1,-1,-1,23,-1,-1,-1,-1,13,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,29,-1,457,-1,-1,-1,-1,-1,-1,-1,-1,-1,41,-1,-1,-1,-1,-1,-1,17];
+
+    let t1 = task1(timestamp, ids);
+    let t2 = task2(ids);
+    assert_eq!(t2, 294354277694107);
+    (t1, t2)
+}
