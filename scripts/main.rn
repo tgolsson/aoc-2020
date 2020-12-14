@@ -12,11 +12,6 @@ pub mod day10;
 pub mod day12;
 pub mod day11;
 pub mod day13;
-
 pub mod day14;
-
-pub async fn main(){
-    assert!(false); // the code below is only required to make the boostrapper find the functions... this main function should never be called.
-}
 
 // -*- mode: rust; -*-
