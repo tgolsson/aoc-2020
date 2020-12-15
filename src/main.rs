@@ -373,7 +373,7 @@ fn run_reload(mut engine: ScriptEngine) -> Result<()> {
 }
 
 fn run(run_once: bool) -> Result<()> {
-    let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
+    let mut engine = ScriptEngineBuilder::new("script/main.rn".into()).build()?;
 
     if !engine.run_tests().unwrap_or(false) {
         eprintln!("failed tests; not rerunning...");
@@ -388,7 +388,7 @@ fn run(run_once: bool) -> Result<()> {
 }
 
 fn bench(iterations: u32, day: Option<u32>) -> Result<()> {
-    let mut engine = ScriptEngineBuilder::new("scripts/main.rn".into()).build()?;
+    let mut engine = ScriptEngineBuilder::new("script/main.rn".into()).build()?;
 
     if let Some(day) = day {
         println!("Benchmarking day {}, iterations={}", day, iterations);

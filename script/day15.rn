@@ -1,0 +1,90 @@
+use std::collections::HashMap;
+
+
+fn task1base(init_sequence, max) {
+    let memory = (0..max).iter().map(|_| -1).collect_vec();
+    for (idx, n) in init_sequence.iter().enumerate().take(init_sequence.len() - 1) {
+        memory[n] = idx + 1;
+    }
+
+    let current_number = init_sequence[init_sequence.len() - 1];
+
+    let c = init_sequence.len();
+    for s in c..max {
+
+        let v = memory[current_number];
+        memory[current_number] = s;
+        current_number = if v >= 0 {
+            s - v
+        } else {
+            0
+        };
+    }
+}
+
+fn task1(init_sequence, max) {
+    let upper = max / 10;
+    let memory = (0..upper).iter().map(|_| -1).collect_vec();
+    let high_memory = HashMap::new();
+
+    for (idx, n) in init_sequence.iter().enumerate().take(init_sequence.len() - 1) {
+        memory[n] = idx + 1;
+    }
+
+    let current_number = init_sequence[init_sequence.len() - 1];
+
+    let s = init_sequence.len();
+    loop {
+        let v = if current_number < upper {
+            let v = memory[current_number];
+            memory[current_number] = s;
+            v
+        } else {
+            let v = high_memory.get(current_number).unwrap_or(-1);
+            high_memory[current_number] = s;
+            v
+        };
+
+        current_number = if v >= 0 {
+            s - v
+        } else {
+            0
+        };
+        s += 1;
+        if s > max - 1 {
+            break;
+        }
+    }
+    current_number
+}
+
+
+pub async fn run() {
+    let t1 = task1([16,11,15,0,1,7], 2020);
+    let t2 = task1([16,11,15,0,1,7], 30000000);
+    let t1 = 662;
+    let t2 = 37312;
+    (t1, t2)
+}
+
+#[test]
+pub fn test_task1() {
+    assert_eq!(task1([0, 3, 6], 2020), 436);
+    assert_eq!(task1([1, 3, 2], 2020), 1);
+    assert_eq!(task1([2, 1, 3], 2020), 10);
+    assert_eq!(task1([1, 2, 3], 2020), 27);
+    assert_eq!(task1([2, 3, 1], 2020), 78);
+    assert_eq!(task1([3, 2, 1], 2020), 438);
+    assert_eq!(task1([3, 1, 2], 2020), 1836);
+}
+
+#[test]
+pub fn test_task2() {
+    // assert_eq!(task1([0, 3, 6], 30000000), 175594);
+    // assert_eq!(task1([1, 3, 2], 30000000), 2578);
+    // assert_eq!(task1([2, 1, 3], 30000000), 3544142);
+    // assert_eq!(task1([1, 2, 3], 30000000), 261214);
+    // assert_eq!(task1([2, 3, 1], 30000000), 6895259);
+    // assert_eq!(task1([3, 2, 1], 30000000), 18);
+    // assert_eq!(task1([3, 1, 2], 30000000), 362);
+}
