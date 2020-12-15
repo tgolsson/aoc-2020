@@ -278,14 +278,13 @@ async fn test_part2() {
 }
 
 pub async fn run() {
-    if false {
+    if true {
         let waiting_hall = read_file("inputs/day11.txt")
             .await?
             .map(scan_line)
             .fold(Map::new(), Map::add);
 
         waiting_hall.complete(|m, x, y| m.slopes.iter().map(|(dx, dy)| (x + dx) + (y + dy) * m.width).collect_vec());
-        dbg(waiting_hall.width, waiting_hall.height);
         for i in (0..100).iter() {
             if !waiting_hall.step() {
                 break;
