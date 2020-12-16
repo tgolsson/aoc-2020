@@ -14,6 +14,7 @@ pub mod day11;
 pub mod day13;
 pub mod day14;
 pub mod day15;
+pub mod day16;
 
 pub async fn main() {
     day1::run().await;
@@ -31,5 +32,6 @@ pub async fn main() {
     day13::run().await;
     day14::run().await;
     day15::run().await;
+    day16::run().await;
 }
 // -*- mode: rust; -*-

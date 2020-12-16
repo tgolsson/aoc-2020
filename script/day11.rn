@@ -278,7 +278,7 @@ async fn test_part2() {
 }
 
 pub async fn run() {
-    if true {
+    if false {
         let waiting_hall = read_file("inputs/day11.txt")
             .await?
             .map(scan_line)

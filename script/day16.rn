@@ -1,0 +1,223 @@
+use crate::utils::{read_file, iter};
+use std::collections::{HashSet, HashMap};
+
+fn parse_rule(l) {
+    let it = l.split(':');
+    let rule_name = it.next()?;
+
+    let constraint_ranges = it.next()?.split_str(" or ");
+
+    let allowed_ranges = [];
+    for item in constraint_ranges {
+        let parts = item.split('-');
+        let lower = parts.next()?.trim();
+        let upper = parts.next()?.trim();
+
+        allowed_ranges.push(std::string::parse_int(lower)?..=std::string::parse_int(upper)?);
+    }
+    (rule_name, allowed_ranges)
+}
+
+fn parse_ticket(l) {
+    l
+        .split(',')
+        .map(std::string::parse_int)
+        .map(Result::unwrap)
+        .collect_vec()
+}
+
+fn parse_content(line_iter) {
+    let group_iter = iter::batch_by_lines(line_iter);
+
+    let rules = HashMap::from(group_iter.next()?.iter().map(parse_rule));
+    let my_ticket = parse_ticket(group_iter.next()?.iter().skip(1).next()?);
+
+    let nearby_tickets = group_iter.next()?.iter().skip(1).map(parse_ticket).collect_vec();
+
+    (rules, my_ticket, nearby_tickets)
+}
+
+fn task1(rules, nearby_tickets) {
+    let valid_tickets = [];
+    let ivs = nearby_tickets.iter().fold(0, |a, v| {
+        let invalid_sum = 0;
+        for field in v {
+            let this_field_valid = false;
+            for ranges in rules.values() {
+                if ranges[0].contains_int(field) || ranges[1].contains_int(field) {
+                    this_field_valid = true;
+                    break;
+                }
+            }
+
+            if !this_field_valid {
+                invalid_sum += field;
+            }
+        }
+        if invalid_sum == 0 {
+            valid_tickets.push(v);
+        }
+        a + invalid_sum
+    });
+    (ivs, valid_tickets)
+}
+
+/// Filters and orders the free slot indices such that the most constrained slot is first and the least constrained (but valid) slot is last.
+fn order_most_constrained(valid_rule_assignments, available_rules, slots) {
+    let out_slots = [];
+    let slots_taken = HashSet::new();
+    loop {
+        let most_constrained_slot = 0;
+        let most_constrained_count = 100;
+        for (idx, slot) in valid_rule_assignments.iter().enumerate() {
+            if slots[idx].is_some() || slots_taken.contains(idx) {
+                continue;
+            }
+
+            let c = slot.len();
+            if c < most_constrained_count {
+                most_constrained_count = c;
+                most_constrained_slot = idx;
+            }
+        }
+
+        if most_constrained_count == 100 {
+            break;
+        }
+        out_slots.push(most_constrained_slot);
+        slots_taken.insert(most_constrained_slot);
+    }
+
+    out_slots
+}
+
+// This only uses MCV heuristic, we could implement LCH but this is only ~9% of total runtime... most of it is setting up the two validity tables
+// and LCH would require more setup, and sorting.
+fn solve_reduced_csp(rules, available_rules, slots, tickets, valid_rule_assignments, rules_valid_slots) {
+    for slot in order_most_constrained(valid_rule_assignments, available_rules, slots) {
+        for rule in valid_rule_assignments[slot] {
+            if !available_rules.contains(rule) {
+                continue;
+            }
+
+            slots[slot] = Some(rule);
+            available_rules.remove(rule);
+
+            // ugly here but skips one level of recursion
+            if available_rules.is_empty() {
+                return Some(slots);
+            }
+
+            for slot in rules_valid_slots[rule] {
+                valid_rule_assignments[slot].remove(rule);
+            }
+
+            match solve_reduced_csp(rules, available_rules, slots, tickets, valid_rule_assignments, rules_valid_slots) {
+                Some(solution) => return Some(solution),
+                None => {
+                    dbg("miss");
+                    available_rules.insert(rule);
+                    slots[slot] = None;
+                    for slot in rules_valid_slots[rule] {
+                        valid_rule_assignments[slot].insert(rule);
+                    }
+                },
+            }
+        }
+    }
+
+    None
+}
+
+fn task2(rules, valids) {
+    let valid_rule_assignments = [];
+    let rules_valid_slots = HashMap::new();
+    let slots = [];
+    // just some workspaces we need
+    for k in rules.keys() {
+        valid_rule_assignments.push(HashSet::new());
+        rules_valid_slots[k] = [];
+        slots.push(None);
+    }
+
+    let rules_available = HashSet::from(rules.keys());
+    // symmetric lookup tables for validity
+    let count = rules.len();
+    for (rule, ranges) in rules {
+        let r1 = ranges[0];
+        let r2 = ranges[1];
+        for idx in 0..count {
+            if valids.iter().all(|v| {
+                let v = v[idx];
+                r1.contains_int(v) || r2.contains_int(v)
+            }) {
+                rules_valid_slots[rule].push(idx);
+                valid_rule_assignments[idx].insert(rule);
+            }
+        }
+    }
+
+    let solution = solve_reduced_csp(rules, rules_available, slots, valids, valid_rule_assignments, rules_valid_slots);
+    solution?.iter().map(Option::unwrap).collect_vec()
+}
+
+
+pub async fn run() {
+    let (rules, my_ticket, nearby_tickets) = parse_content(read_file("inputs/day16.txt").await?);
+
+    let (t1, valid_tickets) = task1(rules, nearby_tickets);
+    let solution = task2(rules, valid_tickets);
+    let prod = solution
+        .iter()
+        .enumerate()
+        .filter(|(idx, f)| f.starts_with("departure"))
+        .map(|(idx, _)| my_ticket[idx])
+        .product();
+
+    (t1, prod)
+}
+
+
+#[test]
+fn test_task1() {
+    let notes = "class: 1-3 or 5-7
+row: 6-11 or 33-44
+seat: 13-40 or 45-50
+
+your ticket:
+7,1,14
+
+nearby tickets:
+7,3,47
+40,4,50
+55,2,20
+38,6,12";
+
+    let line_iter = notes.split('\n');
+    let (rules, my_ticket, nearby_tickets) = parse_content(line_iter);
+
+    assert_eq!(task1(rules, nearby_tickets).0, 71);
+}
+
+#[test]
+fn test_task2() {
+    let notes = "class: 1-3 or 5-7
+row: 6-11 or 33-44
+seat: 13-40 or 45-50
+
+your ticket:
+7,1,14
+
+nearby tickets:
+7,3,47
+40,4,50
+55,2,20
+38,6,12";
+
+    let line_iter = notes.split('\n');
+    let (rules, my_ticket, nearby_tickets) = parse_content(line_iter);
+
+    let valids = task1(rules, nearby_tickets).1;
+    let solution = task2(rules, valids);
+    //assert_eq!(solution, ["row", "class", "seat"]);
+}
