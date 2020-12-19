@@ -36,8 +36,8 @@ pub(crate) mod iter {
             let v = [];
             loop {
                 match it.next() {
-                    None => { return  if v.len() != 0 { Some(v) } else { None }; },
-                    Some(x) => { if x == "" {  return Some(v); } else { v.push(x); } }
+                    None => { return  if v.len() != 0 { Some(v.iter()) } else { None }; },
+                    Some(x) => { if x == "" {  return Some(v.iter()); } else { v.push(x); } }
                 }
             }
         })

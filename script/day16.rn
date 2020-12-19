@@ -29,10 +29,10 @@ fn parse_ticket(l) {
 fn parse_content(line_iter) {
     let group_iter = iter::batch_by_lines(line_iter);
 
-    let rules = HashMap::from(group_iter.next()?.iter().map(parse_rule));
-    let my_ticket = parse_ticket(group_iter.next()?.iter().skip(1).next()?);
+    let rules = HashMap::from(group_iter.next()?.map(parse_rule));
+    let my_ticket = parse_ticket(group_iter.next()?.skip(1).next()?);
 
-    let nearby_tickets = group_iter.next()?.iter().skip(1).map(parse_ticket).collect_vec();
+    let nearby_tickets = group_iter.next()?.skip(1).map(parse_ticket).collect_vec();
 
     (rules, my_ticket, nearby_tickets)
 }

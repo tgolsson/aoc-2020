@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::utils::{read_file, iter};
+use crate::utils::{read_file};
 
 
 fn recurse_generate_addresses(accum, address, mask_ors, idx) {

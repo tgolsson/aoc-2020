@@ -19,7 +19,6 @@ fn map(inner, outer) {
 pub fn count_group(v) {
     |lines| {
         lines
-            .iter()
             .map(String::chars)
             .map(HashSet::from)
             .fold(None, apply(v))?

@@ -1,0 +1,101 @@
+fn update_rule(v, neighbours) {
+    let active_neighbours = 0;
+    for n in neighbours {
+        if n {
+            active_neighbours += 1;
+            if active_neighbours >= 4 {
+                break;
+            }
+        }
+    }
+
+    if v {
+        active_neighbours == 2 || active_neighbours == 3
+    } else {
+        active_neighbours == 3
+    }
+
+}
+
+fn push_input(ca, input, template) {
+    for (y, line) in input.iter().enumerate() {
+        for (x, char) in line.chars().enumerate() {
+            template[0] = x;
+            template[1] = y;
+            if char == '#' {
+                ca.add_slot(template.clone(), true);
+            }
+        }
+    }
+}
+
+pub async fn run() {
+
+    let input = [
+        "#####..#",
+        "#..###.#",
+        "###.....",
+        ".#.#.#..",
+        "##.#..#.",
+        "######..",
+        ".##..###",
+        "###.####",
+    ];
+
+
+    let ca = aoc::CA3::new(3, update_rule);
+    push_input(ca, input, [0, 0, 0]);
+
+    for _ in 0..6 {
+        ca.step();
+    }
+
+    let t1 = ca.get_state().iter().filter(|v| v).count();
+
+
+    let ca = aoc::CA3::new(4, update_rule);
+    push_input(ca, input, [0, 0, 0, 0]);
+
+    for _ in 0..6 {
+        ca.step();
+    }
+
+    let t2 = ca.get_state().iter().filter(|v| v).count();
+
+    assert_eq!(t1, 336);
+    assert_eq!(t2, 2620);
+    (t1, t2)
+}
+
+#[test]
+fn test_create_framework() {
+    let test_input = [".#.", "..#", "###"];
+    let ca = aoc::CA3::new(3, update_rule);
+
+    push_input(ca, test_input, [0, 0, 0]);
+
+    for _ in 0..6 {
+        ca.step();
+    }
+
+    let t1 = ca.get_state().iter().filter(|v| v).count();
+    assert_eq!(t1, 112);
+}
+
+
+#[test]
+fn test_t2() {
+    let test_input = [".#.", "..#", "###"];
+    let ca = aoc::CA3::new(4, update_rule);
+
+    push_input(ca, test_input, [0, 0, 0, 0]);
+    for i in 0..6 {
+        ca.step();
+    }
+
+    ca.render([0, 0, 0, 0]);
+
+    let state = ca.get_state();
+    let t1 = state.iter().filter(|v| v).count();
+    assert_eq!(t1, 848);
+}

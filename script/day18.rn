@@ -1,0 +1,93 @@
+enum Op {
+    Add,
+    Mul,
+}
+
+impl Op {
+    fn from_char(symbol) {
+        match symbol {
+            '+' => Op::Add,
+            '*' => Op::Mul,
+        }
+    }
+
+    fn apply(self, a, b) {
+        match self {
+            Op::Add => a + b,
+            Op::Mul => a * b,
+        }
+    }
+}
+
+fn parse_primary(it) {
+    let c = it.next()?;
+    if c == '(' {
+        return parse_expr(it);
+    }
+
+    return Some(std::char::to_digit(c, 10)?);
+}
+
+fn parse_expr(it) {
+    let curr = parse_primary(it)?;
+    loop {
+        let c = it.next();
+        curr = match c {
+            Some(')') => return Some(curr),
+            Some('+') => curr + parse_primary(it)?,
+            Some('*') => curr * parse_primary(it)?,
+            None => return Some(curr),
+            Some(' ') => {},
+        }
+    }
+}
+
+fn parse_knuth(v) {
+    // knuth's algorithm
+    v = v.replace("(", "(((").replace(")", ")))");
+    v = v.replace("+", ")+(");
+    v = v.replace("-", ")-(");
+    v = v.replace("*", "))*((");
+    v = v.replace("/", "))/((");
+    v = "((" + v + "))";
+    parse_expr(v.chars().filter(|c| c != ' ' ))?
+}
+
+pub async fn run() {
+    let eqns = crate::utils::read_file("inputs/day18.txt").await?.filter(|v| v != "").collect_vec();
+
+    let t1 = eqns.iter().map(|v| parse_expr(v.chars().filter(|c| c != ' ' )).unwrap()).sum();
+    let t2 = eqns.iter().map(parse_knuth).sum();
+    (t1, t2)
+}
+
+#[test]
+fn test_task1() {
+    let cases = [
+        ("1 + 2 * 3 + 4 * 5 + 6", 71),
+        ("2 * 3 + (4 * 5)", 26),
+        ("5 + (8 * 3 + 9 + 3 * 4 * 3)", 437),
+        ("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))", 12240),
+        ("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2", 13632),
+    ];
+
+    for (expr, expected) in cases {
+        assert_eq!(parse_expr(expr.chars().filter(|c| c != ' ' ))?, expected);
+    }
+}
+
+#[test]
+fn test_task2() {
+    let cases = [
+        ("1 + (2 * 3) + (4 * (5 + 6))", 51),
+        ("2 * 3 + (4 * 5)", 46),
+        ("5 + (8 * 3 + 9 + 3 * 4 * 3)", 1445),
+        ("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))", 669060),
+        ("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2", 23340),
+    ];
+
+    for (expr, expected) in cases {
+        assert_eq!(parse_knuth(expr), expected);
+    }
+
+}

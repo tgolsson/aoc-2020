@@ -1,9 +1,8 @@
 use anyhow::Result;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use rune::{
-    load_sources,
     termcolor::{ColorChoice, StandardStream},
-    EmitDiagnostics as _, Errors, LoadSourcesError, Options, Sources, Warnings,
+    Diagnostics, EmitDiagnostics as _, LoadSourcesError, Options, Sources,
 };
 use runestick::{
     CompileMeta, Context, FromValue, Hash, IntoTypeHash, Module, Source, Unit, UnitFn, Vm, VmError,
@@ -23,6 +22,213 @@ use std::{
 };
 use structopt::StructOpt;
 use tokio::runtime;
+
+struct FlatIter {
+    loop_starts: Vec<i32>,
+    loop_ends: Vec<i32>,
+    loop_counters: Vec<i32>,
+}
+
+fn flat_loop<'a>(loop_starts: Vec<i32>, loop_ends: Vec<i32>) -> FlatIter {
+    let mut loop_counters = loop_starts.clone();
+    loop_counters[0] -= 1;
+    FlatIter {
+        loop_starts,
+        loop_ends,
+        loop_counters,
+    }
+}
+
+impl FlatIter {
+    fn next<'a>(&'a mut self) -> Option<&'a Vec<i32>> {
+        let mut inc = 1;
+        for (idx, counter) in self.loop_counters.iter_mut().enumerate() {
+            *counter += inc;
+            if *counter >= self.loop_ends[idx] {
+                *counter = self.loop_starts[idx];
+                inc = 1;
+            } else {
+                inc = 0;
+            }
+        }
+        if inc == 1 {
+            return None;
+        }
+
+        Some(&self.loop_counters)
+    }
+}
+
+#[derive(runestick::Any)]
+struct CA3 {
+    current_min: Vec<i32>,
+    current_max: Vec<i32>,
+    current_size: Vec<usize>,
+    eval_cell_fn: runestick::Function,
+    state: Vec<(Vec<i32>, bool)>,
+    query: Vec<bool>,
+}
+
+impl CA3 {
+    fn new(dims: usize, eval_cell_fn: runestick::Function) -> Self {
+        Self {
+            current_min: vec![i32::MAX; dims],
+            current_max: vec![i32::MIN; dims],
+            current_size: vec![0; dims],
+            eval_cell_fn,
+            state: vec![],
+            query: vec![],
+        }
+    }
+
+    pub fn add_slot(&mut self, position: Vec<i32>, value: bool) {
+        self.current_min = position
+            .iter()
+            .zip(self.current_min.iter())
+            .map(|(a, b)| i32::min(*a, *b))
+            .collect();
+
+        self.current_max = position
+            .iter()
+            .zip(self.current_max.iter())
+            .map(|(a, b)| i32::max(*a + 1, *b))
+            .collect();
+
+        self.state.push((position, value));
+    }
+
+    fn build_query_structure(&mut self) {
+        self.query.clear();
+
+        let query_sizes = self
+            .current_max
+            .iter()
+            .zip(self.current_min.iter())
+            .map(|(a, b)| (*a - *b) as usize)
+            .collect::<Vec<_>>();
+
+        let query_size = query_sizes.iter().product();
+
+        self.query.resize(query_size, false);
+        self.current_size = query_sizes;
+
+        for (pos, val) in &self.state {
+            let idx = self.position_to_index(pos);
+            self.query[idx] = *val;
+        }
+    }
+
+    fn render(&mut self, mut template: Vec<i32>) -> String {
+        self.build_query_structure();
+
+        let mut out = vec![];
+        for y in self.current_min[1]..self.current_max[1] {
+            let mut line = String::with_capacity(self.current_size[0]);
+            for x in self.current_min[0]..self.current_max[0] {
+                template[0] = x;
+                template[1] = y;
+                let idx = self.position_to_index(&template);
+                line.push(if self.query[idx] { '#' } else { '.' })
+            }
+            out.push(line)
+        }
+
+        out.join("\n")
+    }
+
+    fn position_to_index(&self, pos: &Vec<i32>) -> usize {
+        let relative_pos = pos
+            .iter()
+            .zip(self.current_min.iter())
+            .map(|(&a, &b)| (a - b) as usize);
+
+        let mut idx = 0;
+        let mut scale = 1;
+        for (it, p) in relative_pos.enumerate() {
+            idx += p * scale;
+            scale *= self.current_size[it];
+        }
+
+        idx
+    }
+
+    fn prepare_scratch(&mut self, position: &Vec<i32>) -> Vec<bool> {
+        let mut scratch = vec![];
+
+        let loop_starts = position.iter().map(|v| v - 1).collect::<Vec<_>>();
+        let loop_ends = position.iter().map(|v| v + 2).collect::<Vec<_>>();
+        let mut iter = flat_loop(loop_starts, loop_ends);
+        while let Some(counter) = iter.next() {
+            let mut is_ok = true;
+            for (idx, loop_v) in counter.iter().enumerate() {
+                if *loop_v < self.current_min[idx] || *loop_v >= self.current_max[idx] {
+                    is_ok = false;
+                    break;
+                }
+            }
+
+            if is_ok && counter != position {
+                let idx = self.position_to_index(counter);
+                scratch.push(self.query[idx as usize]);
+            }
+        }
+        scratch
+    }
+
+    fn step(&mut self) -> Result<(), runestick::VmError> {
+        self.build_query_structure();
+        self.state.clear();
+        let mut updates = Vec::with_capacity(self.query.len());
+
+        let loop_starts = self.current_min.iter().map(|v| v - 1).collect::<Vec<_>>();
+        let loop_ends = self.current_max.iter().map(|v| v + 1).collect::<Vec<_>>();
+        let mut iter = flat_loop(loop_starts, loop_ends);
+
+        while let Some(position) = iter.next() {
+            let mut is_ok_index = true;
+            for (idx, loop_v) in position.iter().enumerate() {
+                if *loop_v < self.current_min[idx] || *loop_v >= self.current_max[idx] {
+                    is_ok_index = false;
+                    break;
+                }
+            }
+
+            let state_here = if is_ok_index {
+                let idx = self.position_to_index(&position);
+                self.query[idx]
+            } else {
+                false
+            };
+
+            let scratch = self.prepare_scratch(&position);
+            let res = self.eval_cell_fn.call::<_, bool>((state_here, scratch))?;
+            if res {
+                updates.push((position.clone(), true));
+            }
+        }
+
+        updates.drain(..).for_each(|v| self.add_slot(v.0, v.1));
+
+        Ok(())
+    }
+
+    fn get_state(&mut self) -> Vec<bool> {
+        self.build_query_structure();
+        self.query.clone()
+    }
+}
+
+fn ca_module() -> Result<Module, runestick::ContextError> {
+    let mut module = Module::with_crate("aoc");
+    module.ty::<CA3>()?;
+    module.inst_fn("step", CA3::step)?;
+    module.inst_fn("get_state", CA3::get_state)?;
+    module.inst_fn("add_slot", CA3::add_slot)?;
+    module.inst_fn("render", CA3::render)?;
+    module.function(&["CA3", "new"], CA3::new)?;
+
+    Ok(module)
+}
 
 pub struct ScriptEngineBuilder {
     root: PathBuf,
@@ -114,11 +320,10 @@ impl ScriptEngine {
         let mut sources = Sources::new();
         sources.insert(Source::from_path(&self.main_file)?);
 
-        let mut errors = Errors::new();
+        let mut diagnostics = Diagnostics::new();
         let mut options = Options::default();
         options.debug_info(true);
         options.memoize_instance_fn(true);
-        let mut warnings = Warnings::new();
 
         self.sources = sources;
 
@@ -128,8 +333,7 @@ impl ScriptEngine {
             &self.context,
             &options,
             &mut self.sources,
-            &mut errors,
-            &mut warnings,
+            &mut diagnostics,
             test_finder.clone(),
             source_loader.clone(),
         ) {
@@ -142,7 +346,7 @@ impl ScriptEngine {
             }
             Err(e @ LoadSourcesError) => {
                 let mut writer = StandardStream::stderr(ColorChoice::Always);
-                errors.emit_diagnostics(&mut writer, &self.sources)?;
+                diagnostics.emit_diagnostics(&mut writer, &self.sources)?;
                 return Err(e.into());
             }
         }
@@ -170,7 +374,6 @@ impl ScriptEngine {
         let mut failures = HashMap::new();
 
         for test in &self.tests {
-            print!("testing {:40} ", test.1.item.item);
             let mut vm = Vm::new(runtime.clone(), self.unit.clone());
 
             let info = self.unit.lookup(test.0).ok_or_else(|| {
@@ -194,13 +397,14 @@ impl ScriptEngine {
                 Err(e) => {
                     // TODO: store output here
                     failures.insert(test.1.item.item.clone(), e);
-                    println!("failed");
+                    print!("F");
                 }
                 Ok(_) => {
-                    println!("ok.")
+                    print!(".")
                 }
             }
         }
+        println!("");
 
         let elapsed = start.elapsed();
 
@@ -373,7 +577,9 @@ fn run_reload(mut engine: ScriptEngine) -> Result<()> {
 }
 
 fn run(run_once: bool) -> Result<()> {
-    let mut engine = ScriptEngineBuilder::new("script/main.rn".into()).build()?;
+    let mut engine = ScriptEngineBuilder::new("script/main.rn".into())
+        .add_module(ca_module()?)
+        .build()?;
 
     if !engine.run_tests().unwrap_or(false) {
         eprintln!("failed tests; not rerunning...");

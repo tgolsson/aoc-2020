@@ -1,5 +1,4 @@
 use crate::utils::{read_file, iter};
-use std::collections::HashMap;
 
 pub fn parse_field(field) {
     let parts = field.split(':');

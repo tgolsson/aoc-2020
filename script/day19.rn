@@ -1,0 +1,303 @@
+use std::collections::HashMap;
+
+enum Rule {
+	Str(c),
+	Or(r, r),
+	Seq(vs),
+}
+
+struct StrIter {
+	string,
+	position
+}
+
+impl StrIter {
+	fn new(string) {
+		Self {
+			string,
+			position: 0
+		}
+	}
+
+	fn clone(self) {
+		Self {
+			string: self.string,
+			position: self.position
+		}
+	}
+
+	fn next(self) {
+		self.position += 1;
+		self.string.char_at(self.position - 1)
+	}
+
+	fn completed(self) {
+		self.position == self.string.len()
+	}
+}
+
+impl Rule {
+	fn validate(self, rules, str) {
+		let it = StrIter::new(str);
+		self.validate_inner(rules, it).filter(|x| x.completed()).take(1).count() >= 1
+	}
+
+	fn validate_inner(self, rules, it) {
+		match self {
+			Self::Str(v) => {
+				if let Some(c) = it.next() {
+					if c == v {
+						return std::iter::once(it);
+					}
+				}
+				std::iter::empty()
+			},
+			// Take all possible outcomes from LHS and RHS and return all of them... lazily
+			Self::Or(l, r) => l.validate_inner(rules, it.clone()).chain(r.validate_inner(rules, it)),
+			// This is an ungodly abomiantion which boils down BFS traversal
+			Self::Seq(vs) => vs.iter().fold(std::iter::once(it), |branches, v| branches.flat_map(|b| rules[v].validate_inner(rules, b)))
+		}
+	}
+}
+
+fn validate_all(rules, messages) {
+	let root = rules[0];
+	messages.iter().filter(|v| root.validate(rules, v)).count()
+}
+
+fn parse_input(it) {
+	let it = crate::utils::iter::batch_by_lines(it);
+	let rules = parse_rules(it.next()?);
+	let messages = it.next()?.collect_vec();
+
+	(rules, messages)
+}
+
+fn parse_rules(it) {
+	HashMap::from(it.map(parse_rule))
+}
+
+fn parse_rule(line) {
+	let parts = line.split_str(": ");
+	let number = std::string::parse_int(parts.next()?).expect("a number");
+
+	let rhs = parts.next()?;
+	let rule = parse_rule_parts(rhs)?;
+
+	(number, rule)
+}
+
+fn parse_rule_parts(str) {
+	if str.char_at(0)? == '"' {
+		return Some(Rule::Str(str.replace("\"", "").char_at(0)?));
+	}
+
+	let parts = str.split(' ');
+	let items = [];
+	let builder = |v| { Rule::Seq(v) };
+	while let Some(p) = parts.next() {
+		match p {
+			"|" => {
+				builder = (|itms| {
+					|v| Rule::Or(Rule::Seq(itms), Rule::Seq(v))
+				})(items);
+				items = [];
+			},
+			_ => {
+				items.push(std::string::parse_int(p).expect("a number"));
+			}
+		}
+	}
+
+	Some(builder(items))
+}
+
+pub async fn run() {
+	let data = crate::utils::read_file("inputs/day19.txt").await?;
+	let (r, n) = parse_input(data);
+	let t1 = validate_all(r, n);
+
+	r[8] = Rule::Or(Rule::Seq([42]), Rule::Seq([42, 8]));
+	r[11] = Rule::Or(Rule::Seq([42, 31]), Rule::Seq([42, 11, 31]));
+	let t2 = validate_all(r, n);
+
+	(t1, t2)
+}
+
+fn flatten_rule(rule, map) {
+	match rule {
+		Rule::Or(l, r) => {
+			let l1 = flatten_rule(l, map);
+			let r1 = flatten_rule(r, map);
+			Rule::Or(l1, r1)
+		},
+		Rule::Seq(vs) => {
+			let vs = vs.iter().map(|r| flatten_rule(map[r], map)).collect_vec();
+			Rule::Seq(vs)
+		},
+		Rule::Str(v) => Rule::Str(v),
+	}
+}
+
+#[test]
+fn test_parse_rules() {
+	let example = "0: 1 2
+1: \"a\"
+2: 1 3 | 3 1
+3: \"b\"";
+
+	let rules = parse_rules(example.split('\n'));
+	assert_eq!(rules[0], Rule::Seq([1, 2]));
+	assert_eq!(rules[1], Rule::Str('a'));
+	assert_eq!(rules[2], Rule::Or(Rule::Seq([1, 3]), Rule::Seq([3, 1])));
+	assert_eq!(rules[3], Rule::Str('b'));
+	let flat = flatten_rule(rules[0], rules);
+	let expected = Rule::Seq([
+		Rule::Str('a'),
+		Rule::Or(
+			Rule::Seq([
+				Rule::Str('a'),
+				Rule::Str('b')
+			]),
+			Rule::Seq([
+				Rule::Str('b'),
+				Rule::Str('a')
+			])
+		),
+	]);
+	assert_eq!(flat, expected);
+}
+
+#[test]
+fn test_validate_ex1() {
+	let example = "0: 1 2
+1: \"a\"
+2: 1 3 | 3 1
+3: \"b\"";
+
+	let rules = parse_rules(example.split('\n'));
+	let rule = rules[0];
+	assert!(rule.validate(rules, "aab"));
+	assert!(rule.validate(rules, "aba"));
+}
+
+#[test]
+fn test_validate_ex2() {
+	let rule_string = "0: 4 1 5
+1: 2 3 | 3 2
+2: 4 4 | 5 5
+3: 4 5 | 5 4
+4: \"a\"
+5: \"b\"";
+
+	let rules = parse_rules(rule_string.split('\n'));
+
+	let expected_success = [
+		"aaaabb",
+		"aaabab",
+		"abbabb",
+		"abbbab",
+		"aabaab",
+		"aabbbb",
+		"abaaab",
+		"ababbb"
+	];
+
+	for input in expected_success {
+		assert!(rules[0].validate(rules, input), "failed on {}", input);
+	}
+}
+
+#[test]
+fn test_task1() {
+	let task1_example = "0: 4 1 5
+1: 2 3 | 3 2
+2: 4 4 | 5 5
+3: 4 5 | 5 4
+4: \"a\"
+5: \"b\"
+
+ababbb
+bababa
+abbbab
+aaabbb
+aaaabbb";
+
+	let (r, m) = parse_input(task1_example.split('\n'));
+	assert_eq!(validate_all(r, m), 2);
+}
+
+#[test]
+fn test_task2() {
+	let input = "42: 9 14 | 10 1
+9: 14 27 | 1 26
+10: 23 14 | 28 1
+1: \"a\"
+5: 1 14 | 15 1
+19: 14 1 | 14 14
+12: 24 14 | 19 1
+16: 15 1 | 14 14
+31: 14 17 | 1 13
+6: 14 14 | 1 14
+2: 1 24 | 14 4
+0: 8 11
+13: 14 3 | 1 12
+15: 1 | 14
+17: 14 2 | 1 7
+23: 25 1 | 22 14
+28: 16 1
+4: 1 1
+20: 14 14 | 1 15
+3: 5 14 | 16 1
+27: 1 6 | 14 18
+14: \"b\"
+21: 14 1 | 1 14
+25: 1 1 | 1 14
+22: 14 14
+26: 14 22 | 1 20
+18: 15 15
+7: 14 5 | 1 21
+24: 14 1
+8: 42 | 42 8
+11: 42 31 | 42 11 31
+
+abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa
+bbabbbbaabaabba
+babbbbaabbbbbabbbbbbaabaaabaaa
+aaabbbbbbaaaabaababaabababbabaaabbababababaaa
+bbbbbbbaaaabbbbaaabbabaaa
+bbbababbbbaaaaaaaabbababaaababaabab
+ababaaaaaabaaab
+ababaaaaabbbaba
+baabbaaaabbaaaababbaababb
+abbbbabbbbaaaababbbbbbaaaababb
+aaaaabbaabaaaaababaa
+aaaabbaaaabbaaa
+aaaabbaabbaaaaaaabbbabbbaaabbaabaaa
+babaaabbbaaabaababbaabababaaab
+aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba";
+
+	let (r, n) = parse_input(input.split('\n'));
+	// assert_eq!(validate_all(r, n), 3);
+
+	// r[11] = Rule::Or(Rule::Seq([42, 31]), Rule::Seq([42, 11, 31]));
+	// r[8] = Rule::Or(Rule::Seq([42]), Rule::Seq([42, 8]));
+	let n = [
+		"ababaaaaaabaaab", // SUCCESS
+		"ababaaaaabbbaba", // SUCCESS
+		"aaaabbaaaabbaaa", // FAIL
+		"bbabbbbaabaabba", // SUCCESS
+		"aaaaabbaabaaaaababaa", // SUCCESS
+		"abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa",
+		"babbbbaabbbbbabbbbbbaabaaabaaa",
+		"aaabbbbbbaaaabaababaabababbabaaabbababababaaa",
+		"bbbbbbbaaaabbbbaaabbabaaa",
+		"bbbababbbbaaaaaaaabbababaaababaabab",
+		"baabbaaaabbaaaababbaababb",
+		"abbbbabbbbaaaababbbbbbaaaababb",
+		"aaaabbaabbaaaaaaabbbabbbaaabbaabaaa",
+		"babaaabbbaaabaababbaabababaaab",
+		"aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba",
+	];
+	assert_eq!(validate_all(r, n), 12);
+}
