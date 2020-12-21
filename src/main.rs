@@ -320,7 +320,7 @@ impl ScriptEngine {
         let mut sources = Sources::new();
         sources.insert(Source::from_path(&self.main_file)?);
 
-        let mut diagnostics = Diagnostics::new();
+        let mut diagnostics = Diagnostics::without_warnings();
         let mut options = Options::default();
         options.debug_info(true);
         options.memoize_instance_fn(true);
@@ -467,7 +467,6 @@ impl ScriptEngine {
             }
         };
 
-        let result = <(u64, u64)>::from_value(result);
         let elapsed = start.elapsed();
 
         let previous_time = self.days[&day];
@@ -576,10 +575,13 @@ fn run_reload(mut engine: ScriptEngine) -> Result<()> {
     }
 }
 
-fn run(run_once: bool) -> Result<()> {
-    let mut engine = ScriptEngineBuilder::new("script/main.rn".into())
+fn create_engine() -> Result<ScriptEngine> {
+    ScriptEngineBuilder::new("script/main.rn".into())
         .add_module(ca_module()?)
-        .build()?;
+        .build()
+}
+fn run(run_once: bool) -> Result<()> {
+    let mut engine = create_engine()?;
 
     if !engine.run_tests().unwrap_or(false) {
         eprintln!("failed tests; not rerunning...");
@@ -594,7 +596,7 @@ fn run(run_once: bool) -> Result<()> {
 }
 
 fn bench(iterations: u32, day: Option<u32>) -> Result<()> {
-    let mut engine = ScriptEngineBuilder::new("script/main.rn".into()).build()?;
+    let mut engine = create_engine()?;
 
     if let Some(day) = day {
         println!("Benchmarking day {}, iterations={}", day, iterations);

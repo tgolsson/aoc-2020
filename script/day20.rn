@@ -1,0 +1,384 @@
+use crate::utils::{read_file, iter};
+use std::collections::{HashSet, HashMap};
+
+enum Face {
+    South(v), North(v), East(v), West(v)
+}
+
+impl Face {
+    fn compat(self, other) {
+        use self::*;
+        match (self, other) {
+            (North(x), South(v)) => x == v,
+            (South(x), North(v)) => x == v,
+            (East(x), West(v)) => x == v,
+            (West(x), East(v)) => x == v,
+            (_, _) => false
+        }
+    }
+
+    fn slot(self) {
+        use self::*;
+
+        match self {
+            South(x) => North(x),
+            North(x) => South(x),
+            East(x) => West(x),
+            West(x) => East(x),
+        }
+    }
+}
+struct Tile {
+    id,
+    rows,
+    perms,
+    es,
+}
+
+fn to_string(it) {
+    it.fold(String::new(), |a, v| { a.push(v); a })
+}
+
+fn rotl(tile) {
+    let rows = [];
+    for i in 0..tile.rows.len() {
+        rows.push(to_string(tile.rows.iter().map(|v| v.char_at(v.len() - i - 1)?)));
+    }
+    Tile {
+        id: tile.id,
+        rows,
+        perms: [],
+        es: [],
+    }
+}
+
+fn rotl2(tile) {
+    let rows = [];
+    for i in 0..tile.rows.len() {
+        rows.push(tile.rows.iter().map(|v| v[tile.rows.len() - i - 1]).collect_vec());
+    }
+    Tile {
+        id: tile.id,
+        rows,
+        perms: [],
+        es: [],
+    }
+}
+
+fn flip(tile) {
+    let rows = tile.rows.iter().rev().collect_vec();
+    Tile {
+        id: tile.id,
+        rows,
+        perms: [],
+        es: [],
+    }
+}
+
+impl Tile {
+    fn from_lines(line_iter) {
+        let title = line_iter.next()?;
+        let id = std::string::parse_int(title.split(' ').skip(1).next()?.replace(":", ""))?;
+        let rows = line_iter.collect_vec();
+        let s = Self {
+            id,
+            rows,
+            perms: [],
+            es: [],
+        };
+
+        s.perms = s.permutations();
+        for perm in s.perms {
+            perm.es = perm.edges();
+        }
+
+        s
+    }
+
+    fn permutations(self) {
+        let a = self;
+        let b = rotl(a);      // 90
+        let c = rotl(b);         // 180
+        let d = rotl(c);         // 270
+        let e = flip(a);       // flip(90)
+        let f = rotl(e);       // flip(180)
+        let g = rotl(f);       // flip(270)
+        let h = rotl(g);       // flip(270)
+
+        [a, b, c, d, e, f, g, h]
+    }
+
+    fn permutations2(self) {
+        let a = self;
+        let b = rotl2(a);      // 90
+        let c = rotl2(b);         // 180
+        let d = rotl2(c);         // 270
+        let e = flip(a);       // flip(90)
+        let f = rotl2(e);       // flip(180)
+        let g = rotl2(f);       // flip(270)
+        let h = rotl2(g);       // flip(270)
+
+        [a, b, c, d, e, f, g, h]
+    }
+
+    fn edges(self) {
+        let edges = [
+            Face::North(self.rows[0]),
+            Face::East(to_string(self.rows.iter().map(|v| v.char_at(9)?))),
+            Face::South(self.rows[9]),
+            Face::West(to_string(self.rows.iter().map(|v| v.char_at(0)?))),
+        ];
+        edges
+    }
+}
+
+fn edges_to_tile_indices(edges, position) {
+    let v = [
+        (edges[0], (position.0, position.1 + 1)),
+        (edges[1], (position.0 + 1, position.1)),
+        (edges[2], (position.0, position.1 - 1)),
+        (edges[3], (position.0 - 1, position.1)),
+    ];
+
+    //println!("{:?} {:?}", position, v);
+    v
+}
+
+async fn load_tiles(file) {
+    let tile_data_iter = iter::batch_by_lines(read_file(file).await?);
+
+    Ok(tile_data_iter.map(Tile::from_lines).collect_vec())
+}
+
+fn draw_grid(positions, open_edges) {
+    let min_x = positions.keys().fold(10000, |mx, c| std::int::min(mx, c.0));
+    let max_x = positions.keys().fold(-10000, |mx, c| std::int::max(mx, c.0));
+    let min_y = positions.keys().fold(10000, |mx, c| std::int::min(mx, c.1));
+    let max_y = positions.keys().fold(-10000, |mx, c| std::int::max(mx, c.1));
+
+    println!("{}..{} {}..{}", min_x, max_x, min_y, max_y);
+    for y in min_y..=max_y {
+        for x in min_x..=max_x {
+            let drawn = if let Some(t) = positions.get((x, y)) {
+                format!("{}   ", t.id)
+            } else {
+                format!("{}, {}", x, y)
+            };
+            print(format!("{:7}", drawn));
+        }
+        println("");
+    }
+}
+
+fn try_tile(positions, open_edges, tile, all_edges) {
+    for permutation in tile.perms {
+        for edge in permutation.es {
+            if !open_edges.contains_key(edge.slot()) {
+                continue;
+            }
+
+            let target_tile = open_edges[edge.slot()];
+            open_edges.remove(edge.slot());
+            positions.insert(target_tile, permutation);
+            let neighbour_edges = edges_to_tile_indices(permutation.es, target_tile);
+
+
+            for (e, pos) in neighbour_edges {
+                if e == edge {
+                    continue;
+                }
+                if positions.contains_key(pos) {
+                    // expanding to already known, just remove the edge
+                    if open_edges.contains_key(e) {
+                        open_edges.remove(e);
+                    }
+                    continue;
+                }
+
+                if all_edges.contains(e) {
+                    continue;
+                }
+
+                all_edges.insert(e);
+                open_edges.insert(e, pos);
+            }
+
+            return true;
+
+        }
+    }
+    false
+}
+
+fn compose(tiles, t) {
+    let remaining_tiles = tiles.clone();
+    remaining_tiles.remove(t.id);
+    let open_edges = HashMap::from(edges_to_tile_indices(t.edges(), (0, 0)).iter());
+    let positions = HashMap::new();
+    positions.insert((0, 0), t);
+    let all_edges = HashSet::from(open_edges.keys());
+    let iters = 100000;
+    while !remaining_tiles.is_empty() {
+        let found = false;
+        for (id, t) in remaining_tiles.iter() {
+            if try_tile(positions, open_edges, t, all_edges) {
+                remaining_tiles.remove(id);
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            println!("REMAINING? {:?}", remaining_tiles);
+            break;
+        }
+
+        iters -= 1;
+        if iters == 0 {
+            dbg("ran out of iters");
+            break;
+        }
+    }
+
+    let min_x = positions.keys().fold(10000, |mx, c| std::int::min(mx, c.0));
+    let max_x = positions.keys().fold(-10000, |mx, c| std::int::max(mx, c.0));
+    let min_y = positions.keys().fold(10000, |mx, c| std::int::min(mx, c.1));
+    let max_y = positions.keys().fold(-10000, |mx, c| std::int::max(mx, c.1));
+
+    let maybe_pos = [
+        positions.get((min_x, min_y)),
+        positions.get((min_x, max_y)),
+        positions.get((max_x, min_y)),
+        positions.get((max_x, max_y)),
+    ];
+
+
+    (maybe_pos.iter().map(Option::unwrap).map(|v| v.id).collect_vec(), positions)
+}
+
+pub fn inner_count_monsters(rows) {
+    let pattern = "                  # \n#    ##    ##    ###\n #  #  #  #  #  #   ";
+
+    let pattern_indices = pattern
+        .split('\n')
+        .enumerate()
+        .flat_map(|(i, v)| {
+            v.chars()
+                .enumerate()
+                .filter(|v| v.1 == '#')
+                .map(|v| (v.0, i))
+            })
+        .collect_vec();
+
+    let all_hashes = HashSet::new();
+    for y in 0..rows.len() {
+        for x in 0..rows[0].len() {
+            if rows[y][x] == '#' {
+                all_hashes.insert((x, y));
+            }
+        }
+    }
+    let all_hashes_2 = all_hashes.clone();
+    let matches = 0;
+    for y in 0..rows.len() {
+        for x in 0..rows[0].len() {
+            let hash_coord = (x, y);
+            let is_match = true;
+            for (idx, offset) in pattern_indices.iter().enumerate() {
+                let c = (hash_coord.0 + offset.0, hash_coord.1 + offset.1);
+                if !all_hashes.contains(c) {
+                    // println!("looking for {:?} in {:?}", c, all_hashes_2);
+                    if idx > 0 {
+                        //println!("miss at {}", idx);
+                    }
+                    is_match = false;
+                    break;
+                }
+            }
+
+            if is_match {
+                matches += 1;
+                for offset in pattern_indices {
+                    let c = (hash_coord.0 + offset.0, hash_coord.1 + offset.1);
+                    if all_hashes_2.contains(c) {
+                        all_hashes_2.remove(c);
+                    }
+                }
+            }
+        }
+    }
+    (matches, all_hashes_2.len())
+}
+
+pub fn merge_map(composed) {
+    let min_x = composed.keys().fold(10000, |mx, c| std::int::min(mx, c.0));
+    let max_x = composed.keys().fold(-10000, |mx, c| std::int::max(mx, c.0));
+    let min_y = composed.keys().fold(10000, |mx, c| std::int::min(mx, c.1));
+    let max_y = composed.keys().fold(-10000, |mx, c| std::int::max(mx, c.1));
+    let rows = (0..(max_y - min_y + 1) * 8).iter().map(|_| []).collect_vec();
+    let yoff = 0;
+    for y in (min_y..=max_y).iter().rev() {
+        for x in min_x..=max_x {
+            let part_here = composed[(x, y)];
+            for o in 0..8 {
+                rows[yoff + o].extend(part_here.rows[o + 1].chars().skip(1).take(8).collect_vec());
+            }
+        }
+
+        yoff += 8;
+    }
+    rows
+}
+
+pub fn count_monsters(composed) {
+    let rows = merge_map(composed);
+    let t = Tile {
+        id: 0,
+        rows,
+        perms: [],
+        es: [],
+    };
+    for x in t.permutations2() {
+        let (matches, harshness) = inner_count_monsters(x.rows);
+        if matches > 0 {
+            return harshness;
+        }
+    }
+    0
+}
+
+
+pub async fn run() {
+    let tiles = load_tiles("inputs/day20.txt").await?;
+
+    let root_tile = tiles[0];
+    let tiles_map = HashMap::from(tiles.iter().map(|v| (v.id, v)));
+
+    let (corners, map) = compose(tiles_map, root_tile);
+    let t2 = count_monsters(map);
+    //let t2 = 0;
+    (corners.iter().product(), t2)
+}
+
+#[test]
+async fn test_task1() {
+    let tiles = load_tiles("inputs/day20_test.txt").await?;
+    let tiles_map = HashMap::from(tiles.iter().map(|v| (v.id, v)));
+    let root_tile = tiles[0];
+    let (corners, _) = compose(tiles_map, root_tile);
+    assert_eq!(corners.iter().product(), 20899048083289);
+}
+
+
+
+#[test]
+async fn test_task2() {
+    let tiles = load_tiles("inputs/day20_test.txt").await?;
+    let tiles_map = HashMap::from(tiles.iter().map(|v| (v.id, v)));
+    let root_tile = tiles[0];
+    let (_, map) = compose(tiles_map, root_tile);
+
+    let c = count_monsters(map);
+    assert_eq!(c, 273);
+}
+

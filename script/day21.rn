@@ -1,0 +1,128 @@
+use crate::utils::read_file;
+use std::collections::{HashMap, HashSet};
+pub async fn run() {
+    let products = read_file("inputs/day21.txt").await?.map(parse_item).collect_vec();
+    let (allergen_table, all_ingredients) = build_list_and_table(products);
+    let known_allergens = find_all_allergens(allergen_table);
+    let non_allergens = find_non_allergens(known_allergens, all_ingredients);
+    let r = build_allergen_list(known_allergens);
+    (non_allergens.len(), r)
+}
+
+fn find_all_allergens(allergen_table) {
+    let known_allergens = HashMap::new();
+
+    while !allergen_table.is_empty() {
+        for (allergen, ingredient_sets) in allergen_table {
+            let first_ingredient_set = ingredient_sets[0];
+            let overlap = ingredient_sets.iter().skip(1).fold(first_ingredient_set, |all, this| HashSet::from(all.intersection(this)));
+            if overlap.len() == 1 {
+                let ingredient = overlap.iter().take(1).next()?;
+                known_allergens[allergen] = ingredient;
+                allergen_table.remove(allergen);
+                for (allergen, ingredient_sets) in allergen_table {
+                    for set in ingredient_sets {
+                        set.remove(ingredient);
+                    }
+                }
+                break;
+            }
+        }
+    }
+    known_allergens
+}
+
+fn build_list_and_table(products) {
+    let all_ingredients = [];
+    let allergen_table = HashMap::new();
+    for (ingredients, allergens) in products {
+        for allergen in allergens {
+            if !allergen_table.contains_key(allergen) {
+                allergen_table[allergen] = [];
+            }
+
+            let ingredient_set = HashSet::from(ingredients.iter());
+            allergen_table[allergen].push(ingredient_set);
+        }
+        all_ingredients.extend(ingredients);
+    }
+
+    (allergen_table, all_ingredients)
+}
+
+fn build_allergen_list(known_allergens) {
+    let allergen_vec = known_allergens.iter().collect_vec();
+
+    allergen_vec.sort_by(|(a1, i1), (a2, i2)| a1.cmp(a2));
+
+    let ingredients = allergen_vec.iter().map(|v| v.1).collect_vec();
+    let first = ingredients[0];
+    ingredients.iter().skip(1).fold(first, |s,v| s + "," + v)
+}
+
+fn parse_item(line) {
+    let ingredients = [];
+    let allergens = [];
+
+    let stage2 = false;
+    for item in line.split(' ') {
+        if item == "(contains" {
+            stage2 = true;
+            continue;
+        }
+
+        if !stage2 {
+            ingredients.push(item);
+        } else {
+            allergens.push(item.replace(",", "").replace(")", ""));
+        }
+    }
+
+    (ingredients, allergens)
+}
+
+fn find_non_allergens(known_allergens, all_ingredients) {
+    for (allergen, ingredient) in known_allergens {
+        let to_remove = [];
+        for (idx, ig) in all_ingredients.iter().enumerate() {
+            if ig == ingredient {
+                to_remove.push(idx);
+            }
+        }
+
+        for idx in to_remove.iter().rev() {
+            all_ingredients.remove(idx);
+        }
+    }
+
+    all_ingredients
+}
+
+#[test]
+fn test_task1() {
+    let contents = "mxmxvkd kfcds sqjhc nhms (contains dairy, fish)
+trh fvjkl sbzzf mxmxvkd (contains dairy)
+sqjhc fvjkl (contains soy)
+sqjhc mxmxvkd sbzzf (contains fish)";
+
+    let products = contents.split('\n').map(parse_item).collect_vec();
+    let (allergen_table, all_ingredients) = build_list_and_table(products);
+    let known_allergens = find_all_allergens(allergen_table);
+    let non_allergens = find_non_allergens(known_allergens, all_ingredients);
+
+    assert_eq!(non_allergens.len(), 5);
+}
+
+#[test]
+fn test_task2() {
+    let contents = "mxmxvkd kfcds sqjhc nhms (contains dairy, fish)
+trh fvjkl sbzzf mxmxvkd (contains dairy)
+sqjhc fvjkl (contains soy)
+sqjhc mxmxvkd sbzzf (contains fish)";
+
+    let products = contents.split('\n').map(parse_item).collect_vec();
+    let (allergen_table, all_ingredients) = build_list_and_table(products);
+    let known_allergens = find_all_allergens(allergen_table);
+
+    assert_eq!(build_allergen_list(known_allergens), "mxmxvkd,sqjhc,fvjkl");
+}
